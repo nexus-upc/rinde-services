@@ -3,6 +3,7 @@ package com.nexus.rinde.acceptance;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,7 +37,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-/** Pasos del panel del dueño de Rinde: catálogo de planes, suscripciones y pagos (US43 y US44). */
+/** Pasos del panel del dueño de Rinde: catálogo, pagos y auditoría (US43, US44 y US45). */
 public class PlatformBillingSteps {
 
   private static final String COMPANY_EMAIL = "admin@catalogo.pe";
@@ -166,6 +167,55 @@ public class PlatformBillingSteps {
   public void theAuditHasChanges(int changes) throws Exception {
     context.record(mockMvc.perform(asOwner(get("/api/v1/platform/audit/billing"))));
     assertThat(context.body().get("total").asInt()).isEqualTo(changes);
+  }
+
+  @Cuando("el dueño consulta la auditoría del catálogo")
+  public void theOwnerReadsCatalogAudit() throws Exception {
+    context.record(mockMvc.perform(asOwner(get("/api/v1/platform/audit/billing"))));
+  }
+
+  @Entonces("la auditoría del catálogo conserva actor, fecha, motivos y estados")
+  public void catalogAuditPreservesMetadata() throws Exception {
+    assertThat(context.statusCode()).isEqualTo(200);
+    List<JsonNode> entries = items();
+    assertThat(entries).hasSize(3);
+    assertThat(entries).extracting(entry -> entry.get("action").asText())
+        .containsExactlyInAnyOrder("PLAN_CREATED", "PLAN_WITHDRAWN", "PLAN_PUBLISHED");
+    assertThat(entries).extracting(entry -> entry.get("reason").asText())
+        .containsExactlyInAnyOrder("Alta para auditoría", "Retiro por revisión", "Reactivación");
+    for (JsonNode entry : entries) {
+      assertThat(entry.get("actorEmail").asText()).isEqualTo("owner@example.invalid");
+      assertThat(entry.get("targetType").asText()).isEqualTo("PLAN");
+      assertThat(entry.get("targetId").asText()).isEqualTo(plan("Plan Auditoría").getPlanId().toString());
+      assertThat(Instant.parse(entry.get("occurredAt").asText()))
+          .isBetween(Instant.now().minusSeconds(300), Instant.now().plusSeconds(5));
+      String action = entry.get("action").asText();
+      assertThat(entry.get("beforeState").asText()).endsWith(
+          "PLAN_CREATED".equals(action) ? "absent" : "PLAN_WITHDRAWN".equals(action) ? "true" : "false");
+      assertThat(entry.get("afterState").asText()).endsWith(
+          "PLAN_WITHDRAWN".equals(action) ? "false" : "true");
+    }
+  }
+
+  @Cuando("el dueño intenta editar y eliminar la entrada de auditoría del catálogo")
+  public void theOwnerTriesToChangeCatalogAudit() throws Exception {
+    theOwnerReadsCatalogAudit();
+    JsonNode original = context.body().deepCopy();
+    String path = "/api/v1/platform/audit/billing/" + items().get(0).get("id").asText();
+    int editStatus = mockMvc.perform(asOwner(patch(path)).content(json(Map.of("reason", "Alterado"))))
+        .andReturn().getResponse().getStatus();
+    int deleteStatus = mockMvc.perform(asOwner(delete(path))).andReturn().getResponse().getStatus();
+    assertThat(editStatus).isIn(404, 405);
+    assertThat(deleteStatus).isIn(404, 405);
+    theOwnerReadsCatalogAudit();
+    assertThat(context.statusCode()).isEqualTo(200);
+    assertThat(context.body()).isEqualTo(original);
+  }
+
+  @Cuando("un administrador de empresa consulta la auditoría del catálogo")
+  public void aCompanyReadsCatalogAudit() throws Exception {
+    context.record(mockMvc.perform(get("/api/v1/platform/audit/billing")
+        .header("Authorization", "Bearer " + companyToken())));
   }
 
   @Y("no se registra el plan {string}")
