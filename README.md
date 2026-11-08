@@ -13,7 +13,7 @@ Se desarrolla en `develop`. `main` recibe solo las versiones cerradas de cada sp
 | services/trip | rinde-trip-service | 0.2.0 | 8082 | rinde_trip |
 | services/fleet | rinde-fleet-service | 0.1.0 | 8083 | rinde_fleet |
 | services/expense | rinde-expense-service | 0.1.0 | 8084 | rinde_expense |
-| services/core | rinde-backend | 0.3.0 | 8080 | rinde |
+| services/core | rinde-backend | 0.3.1 | 8080 | rinde |
 | gateway | rinde-gateway | 0.3.0 | 8000 | No aplica |
 
 Core atiende los contextos que siguen en el monolito: Settlement, Subscriptions & Billing, Notifications y Operations Dashboard. Consulta a Trip, Fleet, Expense e IAM por HTTP. Core ya no contiene los controladores ni el dominio de esos contextos; solo conserva las fachadas y los clientes HTTP que usa.
