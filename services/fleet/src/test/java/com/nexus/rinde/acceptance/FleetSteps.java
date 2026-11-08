@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nexus.rinde.fleet.infrastructure.messaging.FleetSubscriptionMessaging;
+import com.nexus.rinde.fleet.interfaces.acl.PlanChanged;
 import com.nexus.rinde.support.FleetApi;
 import com.nexus.rinde.support.RelativeDates;
 import io.cucumber.java.es.Cuando;
 import io.cucumber.java.es.Dado;
 import io.cucumber.java.es.Y;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,10 +25,30 @@ public class FleetSteps {
 
   private final ScenarioContext context;
   private final FleetApi api;
+  private final FleetSubscriptionMessaging planChanges;
 
-  public FleetSteps(ScenarioContext context, MockMvc mockMvc, ObjectMapper objectMapper) {
+  public FleetSteps(
+      ScenarioContext context,
+      MockMvc mockMvc,
+      ObjectMapper objectMapper,
+      FleetSubscriptionMessaging planChanges) {
     this.context = context;
     this.api = new FleetApi(mockMvc, objectMapper);
+    this.planChanges = planChanges;
+  }
+
+  // --- PLAN ---
+
+  /** El cambio llega por el mismo consumidor que recibe subscription.plan-changed en producción. */
+  @Dado("que la empresa con RUC {string} tiene un plan con límite de {int} unidades")
+  public void theCompanyPlanHasUnitLimit(String ruc, int unitLimit) {
+    planChanges.receive(
+        new PlanChanged(
+            UUID.randomUUID(),
+            Instant.now(),
+            context.tenantIdOf(ruc),
+            UUID.randomUUID(),
+            unitLimit));
   }
 
   // --- VEHÍCULOS ---
