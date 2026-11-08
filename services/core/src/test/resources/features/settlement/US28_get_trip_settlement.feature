@@ -26,7 +26,7 @@ Característica: US28 Consultar la liquidación de un viaje
     Cuando el administrador consulta la liquidación de un viaje sin liquidación
     Entonces la respuesta tiene código 404
 
-  Escenario: El conductor puede consultar la liquidación de su viaje
+  Escenario: El conductor consulta la liquidación de su viaje por id de viaje
     Cuando el conductor "luis@andes.pe" consulta la liquidación del viaje "viaje"
     Entonces la respuesta tiene código 200
 

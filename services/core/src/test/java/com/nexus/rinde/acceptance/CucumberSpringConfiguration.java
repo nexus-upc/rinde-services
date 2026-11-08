@@ -2,11 +2,9 @@ package com.nexus.rinde.acceptance;
 
 import com.nexus.rinde.subscription.platform.infrastructure.PlatformCompanyDirectory;
 import com.nexus.rinde.support.AbstractIntegrationTest;
-import com.nexus.rinde.support.TripTestConfiguration;
 import io.cucumber.spring.CucumberContextConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -18,7 +16,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @CucumberContextConfiguration
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(TripTestConfiguration.class)
 public class CucumberSpringConfiguration extends AbstractIntegrationTest {
 
   /** Firma de prueba del panel del dueño; no es la de ningún entorno. */

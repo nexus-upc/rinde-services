@@ -19,10 +19,13 @@ public abstract class AbstractIntegrationTest {
 
   @Autowired protected TestDatabase testDatabase;
   @Autowired protected CapturedEvents capturedEvents;
+  @Autowired protected ContextDoubles contextDoubles;
+  @Autowired protected ExpenseDouble expenseDouble;
+  @Autowired protected TestTokens tokens;
   @Autowired protected MockMvc mockMvc;
   @Autowired protected ObjectMapper objectMapper;
 
-  protected IamApi api;
+  protected TenantAccess api;
 
   @DynamicPropertySource
   static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -41,6 +44,8 @@ public abstract class AbstractIntegrationTest {
   void cleanData() {
     testDatabase.clean();
     capturedEvents.clear();
-    api = new IamApi(mockMvc, objectMapper, capturedEvents);
+    contextDoubles.reset();
+    expenseDouble.reset();
+    api = new TenantAccess(contextDoubles, tokens);
   }
 }

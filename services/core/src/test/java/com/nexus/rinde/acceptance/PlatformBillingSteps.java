@@ -19,7 +19,9 @@ import com.nexus.rinde.subscription.infrastructure.persistence.jpa.repositories.
 import com.nexus.rinde.subscription.infrastructure.persistence.jpa.repositories.SubscriptionRepository;
 import com.nexus.rinde.subscription.platform.infrastructure.PlatformCompanyDirectory;
 import com.nexus.rinde.support.CapturedEvents;
-import com.nexus.rinde.support.IamApi;
+import com.nexus.rinde.support.ContextDoubles;
+import com.nexus.rinde.support.TenantAccess;
+import com.nexus.rinde.support.TestTokens;
 import io.cucumber.java.es.Cuando;
 import io.cucumber.java.es.Dado;
 import io.cucumber.java.es.Entonces;
@@ -50,6 +52,7 @@ public class PlatformBillingSteps {
   private final SubscriptionRepository subscriptionRepository;
   private final PaymentRepository paymentRepository;
   private final PlatformCompanyDirectory companyDirectory;
+  private final TenantAccess access;
   private final Map<String, UUID> companies = new HashMap<>();
   private String ownerToken;
   private String companyToken;
@@ -63,7 +66,9 @@ public class PlatformBillingSteps {
       PlanRepository planRepository,
       SubscriptionRepository subscriptionRepository,
       PaymentRepository paymentRepository,
-      PlatformCompanyDirectory companyDirectory) {
+      PlatformCompanyDirectory companyDirectory,
+      ContextDoubles doubles,
+      TestTokens tokens) {
     this.context = context;
     this.mockMvc = mockMvc;
     this.objectMapper = objectMapper;
@@ -72,6 +77,7 @@ public class PlatformBillingSteps {
     this.subscriptionRepository = subscriptionRepository;
     this.paymentRepository = paymentRepository;
     this.companyDirectory = companyDirectory;
+    this.access = new TenantAccess(doubles, tokens);
   }
 
   @Dado("que el dueño de Rinde inició sesión en el panel de la plataforma")
@@ -337,9 +343,8 @@ public class PlatformBillingSteps {
 
   private String companyToken() throws Exception {
     if (companyToken == null) {
-      var iam = new IamApi(mockMvc, objectMapper, capturedEvents);
-      iam.registerAndVerifyTenant("20987654321", COMPANY_EMAIL, ScenarioContext.PASSWORD);
-      companyToken = iam.signInForToken(COMPANY_EMAIL, ScenarioContext.PASSWORD);
+      access.registerAndVerifyTenant(COMPANY_EMAIL);
+      companyToken = access.accessTokenFor(COMPANY_EMAIL);
     }
     return companyToken;
   }

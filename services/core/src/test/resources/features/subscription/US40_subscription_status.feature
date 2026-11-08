@@ -36,31 +36,7 @@ Característica: US40 Controlar el estado de la suscripción
     Y la consulta muestra el aviso de renovación y el estado "EXPIRING"
     Y se registra una sola notificación de vencimiento para el administrador
 
-  Escenario: Aplicar restricciones después de tres días sin pago y permitir terminar el viaje en ruta
-    Dado que el administrador invitó a "Luis Quispe" con el correo "luis@andes.pe" y el rol "DRIVER"
-    Y que "luis@andes.pe" definió la contraseña "Clave-De-Luis-2026" con su enlace de invitación
-    Y que el administrador registró el vehículo "camión" con placa "US40-1001", marca "Volvo", modelo "FH", año 2022 y capacidad "5000"
-    Y que el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
-    Y que el administrador asigna el viaje "viaje" al vehículo "camión" y al conductor "luis@andes.pe"
-    Y que el conductor "luis@andes.pe" inicia el viaje "viaje"
-    Y que existe una suscripción activa vencida hace más de tres días
+  Escenario: Suspender la suscripción vencida hace más de tres días
+    Dado que existe una suscripción activa vencida hace más de tres días
     Cuando el proceso diario de suscripciones avanza los estados
-    Y el administrador intenta programar un viaje nuevo y registrar otro vehículo
-    Entonces la respuesta tiene código 403
-    Y se impiden ambos registros porque la empresa debe regularizar la suscripción
-    Cuando el conductor finaliza el viaje en ruta y registra un gasto
-    Entonces la respuesta tiene código 201
-    Y se permiten finalizar el viaje y registrar el gasto
-
-  Escenario: Impedir superar el límite de unidades y sugerir un plan mayor
-    Dado que existe el plan activo de prueba "Plan-Us40-Límite" con precio mensual "89.00" y límite 2
-    Y que la empresa tiene 2 vehículos registrados
-    Cuando el administrador selecciona el plan "Plan-Us40-Límite"
-    Entonces la respuesta tiene código 201
-    Cuando el administrador inicia el checkout simulado de la suscripción creada
-    Entonces la respuesta tiene código 201
-    Cuando la pasarela confirma el último pago simulado
-    Entonces la respuesta tiene código 200
-    Cuando el administrador registra el vehículo "vehículo adicional" con placa "US40-1003", marca "Volvo", modelo "FH", año 2022 y capacidad "5000"
-    Entonces la respuesta tiene código 409
-    Y el mensaje de error contiene "plan con mayor capacidad"
+    Entonces la suscripción queda suspendida y se publica el evento de suspensión

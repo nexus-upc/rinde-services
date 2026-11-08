@@ -13,8 +13,8 @@ import org.springframework.http.MediaType;
 class DisabledSimulationIntegrationTest extends AbstractIntegrationTest {
   @Test
   void doesNotExposeSimulationInNormalMode() throws Exception {
-    api.registerAndVerifyTenant("20123456789", "ana@andes.pe", "Clave-Segura-2026");
-    String token = api.signInForToken("ana@andes.pe", "Clave-Segura-2026");
+    api.registerAndVerifyTenant("ana@andes.pe");
+    String token = api.accessTokenFor("ana@andes.pe");
     mockMvc.perform(post("/api/v1/subscriptions/{id}/payments/{payment}/simulation",
         UUID.randomUUID(), UUID.randomUUID()).header("Authorization", "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"CONFIRMED\"}"))

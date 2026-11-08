@@ -1,7 +1,6 @@
 package com.nexus.rinde.iam.infrastructure.remote;
 
 import com.nexus.rinde.iam.interfaces.acl.IamContextFacade;
-import com.nexus.rinde.iam.interfaces.acl.UserSummary;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -22,18 +21,6 @@ public class HttpIamContextFacade implements IamContextFacade {
 
   public HttpIamContextFacade(@Qualifier("iamRestClient") RestClient client) {
     this.client = client;
-  }
-
-  @Override
-  public Optional<UserSummary> findUserById(UUID tenantId, UUID userId) {
-    return get("/api/internal/v1/tenants/{tenant}/users/{user}", UserSummary.class, tenantId, userId)
-        .filter(user -> tenantId.equals(user.tenantId()) && userId.equals(user.userId()));
-  }
-
-  @Override
-  public boolean isActiveUserWithRole(UUID tenantId, UUID userId, String role) {
-    return findUserById(tenantId, userId)
-        .filter(user -> "ACTIVE".equals(user.status()) && role.equals(user.role())).isPresent();
   }
 
   @Override
