@@ -2,6 +2,7 @@ package com.nexus.rinde.acceptance;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nexus.rinde.notification.application.events.TripAssignedNotification;
 import io.cucumber.spring.ScenarioScope;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +30,8 @@ public class ScenarioContext {
   private final Map<String, String> subscriptionIds = new HashMap<>();
   private MvcResult lastResult;
   private String currentAdministratorToken;
+  private String currentTenantId;
+  private TripAssignedNotification lastTripAssignment;
 
   public ScenarioContext(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
@@ -154,5 +157,23 @@ public class ScenarioContext {
 
   public void setCurrentAdministratorToken(String token) {
     this.currentAdministratorToken = token;
+  }
+
+  /** Empresa sobre la que actúan los pasos de preparación (la última registrada o en sesión). */
+  public String currentTenantId() {
+    return currentTenantId;
+  }
+
+  public void setCurrentTenantId(String tenantId) {
+    this.currentTenantId = tenantId;
+  }
+
+  /** Último aviso de asignación entregado al consumidor, para verificar la notificación. */
+  public void rememberTripAssignment(TripAssignedNotification assignment) {
+    this.lastTripAssignment = assignment;
+  }
+
+  public TripAssignedNotification lastTripAssignment() {
+    return lastTripAssignment;
   }
 }

@@ -1,11 +1,9 @@
 package com.nexus.rinde.fleet.infrastructure.remote;
 
 import com.nexus.rinde.configuration.remote.RemoteServiceUnavailableException;
-import com.nexus.rinde.fleet.interfaces.acl.DriverEligibilitySummary;
 import com.nexus.rinde.fleet.interfaces.acl.FleetContextFacade;
 import com.nexus.rinde.fleet.interfaces.acl.FleetDriverSummary;
 import com.nexus.rinde.fleet.interfaces.acl.FleetVehicleSummary;
-import com.nexus.rinde.fleet.interfaces.acl.VehicleHealthSummary;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,23 +28,6 @@ public class HttpFleetContextFacade implements FleetContextFacade {
 
   public HttpFleetContextFacade(@Qualifier("fleetRestClient") RestClient client) {
     this.client = client;
-  }
-
-  @Override
-  public Optional<VehicleHealthSummary> findVehicleHealthStatus(UUID tenantId, UUID vehicleId) {
-    return get(BASE + "/vehicles/{vehicle}/health", VehicleHealthSummary.class, tenantId, vehicleId);
-  }
-
-  @Override
-  public Optional<DriverEligibilitySummary> checkDriverEligibility(UUID tenantId, UUID driverId) {
-    return get(
-        BASE + "/drivers/{driver}/eligibility", DriverEligibilitySummary.class, tenantId, driverId);
-  }
-
-  @Override
-  public Optional<UUID> findDriverIdByUserId(UUID tenantId, UUID userId) {
-    return get(BASE + "/users/{user}/driver", DriverId.class, tenantId, userId)
-        .map(DriverId::driverId);
   }
 
   @Override
@@ -85,8 +66,6 @@ public class HttpFleetContextFacade implements FleetContextFacade {
       throw new RemoteServiceUnavailableException("flota", ex);
     }
   }
-
-  record DriverId(UUID driverId) {}
 
   record VehicleCount(long count) {}
 }

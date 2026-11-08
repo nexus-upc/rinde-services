@@ -1,23 +1,38 @@
 package com.nexus.rinde.acceptance;
 
 import com.nexus.rinde.support.CapturedEvents;
+import com.nexus.rinde.support.ContextDoubles;
+import com.nexus.rinde.support.ExpenseDouble;
 import com.nexus.rinde.support.TestDatabase;
 import io.cucumber.java.Before;
 
-/** Deja la base limpia antes de cada escenario para poder repetir las pruebas sin datos previos. */
+/**
+ * Deja la base y los dobles de los contextos separados limpios antes de cada escenario, para
+ * poder repetir las pruebas sin datos previos.
+ */
 public class Hooks {
 
   private final TestDatabase testDatabase;
   private final CapturedEvents capturedEvents;
+  private final ContextDoubles contextDoubles;
+  private final ExpenseDouble expenseDouble;
 
-  public Hooks(TestDatabase testDatabase, CapturedEvents capturedEvents) {
+  public Hooks(
+      TestDatabase testDatabase,
+      CapturedEvents capturedEvents,
+      ContextDoubles contextDoubles,
+      ExpenseDouble expenseDouble) {
     this.testDatabase = testDatabase;
     this.capturedEvents = capturedEvents;
+    this.contextDoubles = contextDoubles;
+    this.expenseDouble = expenseDouble;
   }
 
   @Before
   public void cleanData() {
     testDatabase.clean();
     capturedEvents.clear();
+    contextDoubles.reset();
+    expenseDouble.reset();
   }
 }

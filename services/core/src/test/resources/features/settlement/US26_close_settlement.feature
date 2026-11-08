@@ -31,17 +31,10 @@ Característica: US26 Cerrar la liquidación de un viaje
     Cuando el administrador cierra una liquidación con id inexistente
     Entonces la respuesta tiene código 404
 
-  Escenario: La liquidación no incluye gastos de otra empresa
-    Dado que existe una empresa verificada con RUC "20456789012" y administrador "beto@beta.pe"
-    Y que el administrador "beto@beta.pe" inició sesión
-    Y que el administrador invitó a "Marta Ruiz" con el correo "marta@beta.pe" y el rol "DRIVER"
-    Y que "marta@beta.pe" definió la contraseña "Clave-De-Marta-2026" con su enlace de invitación
-    Y que el administrador "ana@andes.pe" inició sesión
+  Escenario: La liquidación suma solo los gastos aprobados del viaje
     Y que el conductor registró un gasto "propio" de tipo "FUEL" por el monto "50.00" con clave "KEY-PROPIO-2026" en el viaje "viaje"
     Y que el administrador "ana@andes.pe" aprobó el gasto "propio"
-    Cuando el conductor "marta@beta.pe" intenta registrar un gasto de tipo "FUEL" por el monto "70.00" con clave "KEY-AJENO-2026" en el viaje "viaje"
-    Entonces la respuesta tiene código 404
-    Y el mensaje de error es "El viaje no existe."
+    Y que el conductor registró un gasto "pendiente" de tipo "TOLL" por el monto "20.00" con clave "KEY-PENDIENTE-2026" en el viaje "viaje"
     Cuando el administrador cierra la liquidación "liq"
     Entonces la respuesta tiene código 200
     Y la respuesta incluye el campo "expenseTotalAmount" con el valor "50.0"

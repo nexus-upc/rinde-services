@@ -23,8 +23,8 @@ class SubscriptionWebIntegrationTest extends AbstractIntegrationTest {
   @Autowired private PlanRepository plans;
 
   private String administrator(String ruc, String email) throws Exception {
-    api.registerAndVerifyTenant(ruc, email, "Clave-Segura-2026");
-    return api.signInForToken(email, "Clave-Segura-2026");
+    api.registerAndVerifyTenant(email);
+    return api.accessTokenFor(email);
   }
 
   private String[] checkout(String token) throws Exception {

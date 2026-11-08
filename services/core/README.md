@@ -2,7 +2,7 @@
 
 Monolito modular original de RINDE by NEXUS, dentro del monorepo. Atiende Settlement, Subscriptions & Billing, Notifications y Operations Dashboard; Incident tiene solo su estructura. Lo común viene de `rinde-shared-kernel` 0.2.0.
 
-Los paquetes `trip`, `iam`, `fleet` y `expense` que siguen aquí son copias antiguas. Esos contextos ya funcionan en sus servicios y el gateway no envía tráfico a estas copias: no usarlas ni modificarlas.
+De Trip, IAM, Fleet y Expense solo quedan las fachadas (`interfaces/acl`) y los clientes HTTP (`infrastructure/remote`) que usan Dashboard, Settlement, Subscriptions y Notifications. Sus controladores, servicios, dominio y repositorios se retiraron de core: esos contextos viven en sus servicios separados. Las migraciones antiguas de `db/migration/iam`, `trip`, `fleet` y `expense` ya se aplicaron y no se editan; core no las ejecuta.
 
 ## Ejecución
 
@@ -26,7 +26,7 @@ Core consulta los otros contextos a través de sus fachadas. Con la propiedad re
 | Fleet | `RINDE_FLEET_REMOTE_ENABLED` | `FLEET_SERVICE_URL`, 8083 | Conteo de unidades para Subscriptions y listados para Dashboard. |
 | Expense | `RINDE_EXPENSE_REMOTE_ENABLED` | `EXPENSE_SERVICE_URL`, 8084 | Gastos aprobados para Settlement y gastos para Dashboard. |
 
-Si un servicio no responde, la API informa 503. Las pruebas ponen estas propiedades en `false` y usan las implementaciones locales, de modo que no necesitan los otros servicios.
+Si un servicio no responde, la API informa 503. Las pruebas ponen estas propiedades en `false` y usan dobles en memoria (`support/ContextDoubles` y `support/ExpenseDouble`), de modo que no necesitan los otros servicios.
 
 ## Eventos
 

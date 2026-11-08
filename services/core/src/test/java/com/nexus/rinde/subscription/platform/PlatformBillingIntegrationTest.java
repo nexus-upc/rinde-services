@@ -117,8 +117,8 @@ class PlatformBillingIntegrationTest extends AbstractIntegrationTest {
 
   @Test
   void companyCannotManagePlansAndOwnerCannotUseCompanyApis() throws Exception {
-    api.registerAndVerifyTenant("20123456789", "company@example.invalid", "CompanyPassword!42");
-    String company = api.signInForToken("company@example.invalid", "CompanyPassword!42");
+    api.registerAndVerifyTenant("company@example.invalid");
+    String company = api.accessTokenFor("company@example.invalid");
     mockMvc
         .perform(get("/api/v1/platform/plans").header("Authorization", "Bearer " + company))
         .andExpect(status().is4xxClientError());

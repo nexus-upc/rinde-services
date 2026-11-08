@@ -47,8 +47,7 @@ class SubscriptionPublisherIntegrationTest extends AbstractIntegrationTest {
 
   @Test
   void publishesTheActivationProducedByAConfirmedPayment() throws Exception {
-    UUID tenant = UUID.fromString(api.registerAndVerifyTenant(
-        "20123456789", "ana@andes.pe", "Clave-Segura-2026"));
+    UUID tenant = UUID.fromString(api.registerAndVerifyTenant("ana@andes.pe"));
     Plan plan = plans.saveAndFlush(new Plan("Plan de prueba", new BigDecimal("99.00"), 10, true));
     Subscription subscription = subscriptions.saveAndFlush(Subscription.pendingPayment(tenant, plan.getPlanId()));
     var checkout = payments.handle(new StartSubscriptionCheckoutCommand(tenant, subscription.getSubscriptionId()));
@@ -66,8 +65,7 @@ class SubscriptionPublisherIntegrationTest extends AbstractIntegrationTest {
 
   @Test
   void publishesSuspensionOnlyAfterTheTransactionCommits() throws Exception {
-    UUID tenant = UUID.fromString(api.registerAndVerifyTenant(
-        "20123456789", "ana@andes.pe", "Clave-Segura-2026"));
+    UUID tenant = UUID.fromString(api.registerAndVerifyTenant("ana@andes.pe"));
     SubscriptionSuspended event = new SubscriptionSuspended(UUID.randomUUID(), Instant.now(), tenant);
     new TransactionTemplate(transactions).executeWithoutResult(status -> {
       publisher.publishEvent(event);
