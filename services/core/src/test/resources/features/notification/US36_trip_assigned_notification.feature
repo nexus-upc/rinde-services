@@ -14,7 +14,7 @@ Característica: US36 Notificar al conductor la asignación de un viaje
   Escenario: Recibir TripAssigned y preparar el aviso para el conductor
     Cuando el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
     Y el administrador asigna el viaje "viaje" al vehículo "camión" y al conductor "luis@andes.pe"
-    Entonces la respuesta tiene código 200
+    Entonces el viaje queda asignado al conductor "luis@andes.pe"
     Y Notifications prepara un aviso pendiente para el conductor "luis@andes.pe" con el código del viaje, el destino "Arequipa" y la fecha de salida "HOY+5"
 
   # El evento actual no contiene token de dispositivo y el proyecto no configura un proveedor push.

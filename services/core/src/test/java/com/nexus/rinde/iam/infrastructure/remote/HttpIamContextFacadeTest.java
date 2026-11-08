@@ -35,20 +35,18 @@ class HttpIamContextFacadeTest {
   }
 
   @Test
-  void treatsAMissingUserAsAbsent() {
-    UUID userId = UUID.randomUUID();
-    server.expect(requestTo("http://iam.test/api/internal/v1/tenants/" + tenantId + "/users/" + userId))
+  void treatsAMissingTenantAsAbsent() {
+    server.expect(requestTo("http://iam.test/api/internal/v1/tenants/" + tenantId + "/status"))
         .andRespond(withStatus(HttpStatus.NOT_FOUND));
-    assertThat(facade.findUserById(tenantId, userId)).isEmpty();
+    assertThat(facade.findTenantStatus(tenantId)).isEmpty();
   }
 
   @Test
-  void doesNotAcceptAUserFromAnotherTenant() {
-    UUID userId = UUID.randomUUID();
-    server.expect(requestTo("http://iam.test/api/internal/v1/tenants/" + tenantId + "/users/" + userId))
-        .andRespond(withSuccess("{\"userId\":\"" + userId + "\",\"tenantId\":\"" + UUID.randomUUID()
-            + "\",\"role\":\"DRIVER\",\"status\":\"ACTIVE\"}", MediaType.APPLICATION_JSON));
-    assertThat(facade.isActiveUserWithRole(tenantId, userId, "DRIVER")).isFalse();
+  void doesNotAcceptAStatusOfAnotherTenant() {
+    server.expect(requestTo("http://iam.test/api/internal/v1/tenants/" + tenantId + "/status"))
+        .andRespond(withSuccess("{\"tenantId\":\"" + UUID.randomUUID() + "\",\"status\":\"ACTIVE\"}",
+            MediaType.APPLICATION_JSON));
+    assertThatThrownBy(() -> facade.findTenantStatus(tenantId)).isInstanceOf(IamUnavailableException.class);
   }
 
   @Test

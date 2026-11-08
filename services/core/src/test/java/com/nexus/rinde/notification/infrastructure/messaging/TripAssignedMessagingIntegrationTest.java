@@ -7,14 +7,13 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.nexus.rinde.notification.domain.services.PushAdapter;
 import com.nexus.rinde.notification.application.events.TripAssignedNotification;
 import com.nexus.rinde.notification.application.internal.commandservices.TripAssignmentNotificationService;
+import com.nexus.rinde.notification.domain.services.PushAdapter;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.RetryStoreEntry;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.repositories.RetryStoreRepository;
 import com.nexus.rinde.notification.infrastructure.services.PushAdapterUnavailableException;
 import com.nexus.rinde.support.AbstractIntegrationTest;
-import com.nexus.rinde.trip.domain.model.events.TripAssigned;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -30,13 +29,15 @@ import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.springframework.dao.DataAccessResourceFailureException;
 
-/** Comprueba JSON real, avisos repetidos, fallos push y mensajes inválidos con RabbitMQ y PostgreSQL. */
+/**
+ * Comprueba el JSON que publica Trip, los avisos repetidos, los fallos push y los mensajes inválidos
+ * con RabbitMQ y PostgreSQL.
+ */
 class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
 
   @Autowired private RabbitTemplate rabbit;
@@ -45,7 +46,6 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
   @Autowired private RabbitListenerEndpointRegistry listeners;
   @Autowired private RetryStoreRepository notices;
   @Autowired private Environment environment;
-  @Autowired private ApplicationEventPublisher publisher;
   @MockitoBean private PushAdapter pushAdapter;
   @MockitoSpyBean private TripAssignmentNotificationService notificationService;
 
@@ -71,7 +71,7 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
 
   @Test
   void receivesTheTripPublisherContractWithoutLoadingItsJavaType() {
-    TripAssigned event = event();
+    TripAssignedNotification event = event();
     send(event);
     awaitNotice(event.eventId());
 
@@ -85,12 +85,11 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
-  void ignoresRepeatedBrokerDeliveriesAndTheSameLocalEvent() {
-    TripAssigned event = event();
-    publisher.publishEvent(event);
+  void ignoresRepeatedBrokerDeliveries() {
+    TripAssignedNotification event = event();
     send(event);
     send(event);
-    TripAssigned sentinel = event();
+    TripAssignedNotification sentinel = event();
     send(sentinel);
     awaitNotice(sentinel.eventId());
 
@@ -102,7 +101,7 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
   void keepsTheNoticePendingWhenPushIsUnavailable() {
     doThrow(new PushAdapterUnavailableException("Proveedor push no disponible."))
         .when(pushAdapter).send(any());
-    TripAssigned event = event();
+    TripAssignedNotification event = event();
     send(event);
     awaitNotice(event.eventId());
 
@@ -118,7 +117,7 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
   void retriesATransientDatabaseFailureBeforeAcknowledgingTheMessage() {
     doThrow(new DataAccessResourceFailureException("Base temporalmente no disponible."))
         .doCallRealMethod().when(notificationService).handle(any(TripAssignedNotification.class));
-    TripAssigned event = event();
+    TripAssignedNotification event = event();
     send(event);
     awaitNotice(event.eventId());
 
@@ -144,7 +143,7 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
     return environment.getRequiredProperty("rinde.messaging.notification.queue");
   }
 
-  private void send(TripAssigned event) {
+  private void send(TripAssignedNotification event) {
     rabbit.convertAndSend(eventsExchange.getName(), "trip.assigned", event);
   }
 
@@ -152,8 +151,9 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
     await().atMost(Duration.ofSeconds(10)).until(() -> notices.existsById(eventId));
   }
 
-  private TripAssigned event() {
-    return new TripAssigned(UUID.randomUUID(), Instant.now(), UUID.randomUUID(), UUID.randomUUID(),
-        "TRP-000001", "Arequipa", LocalDate.now().plusDays(5), UUID.randomUUID(), UUID.randomUUID());
+  private TripAssignedNotification event() {
+    return new TripAssignedNotification(UUID.randomUUID(), Instant.now(), UUID.randomUUID(),
+        UUID.randomUUID(), "TRP-000001", "Arequipa", LocalDate.now().plusDays(5), UUID.randomUUID(),
+        UUID.randomUUID());
   }
 }

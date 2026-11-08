@@ -45,3 +45,11 @@ Característica: US12 Registrar y listar vehículos
     Y que "luis@andes.pe" definió la contraseña "Clave-De-Luis-2026" con su enlace de invitación
     Cuando el conductor "luis@andes.pe" intenta registrar un vehículo con placa "DEF-456"
     Entonces la respuesta tiene código 403
+
+  Escenario: Rechazar un vehículo que supera el límite de unidades del plan
+    Dado que la empresa con RUC "20123456789" tiene un plan con límite de 2 unidades
+    Y que el administrador registró el vehículo "camion" con placa "ABC-123", marca "Volvo", modelo "FH540", año 2022 y capacidad "15000.00"
+    Y que el administrador registró el vehículo "camion2" con placa "XYZ-789", marca "Mercedes", modelo "Actros", año 2021 y capacidad "12000.00"
+    Cuando el administrador registra el vehículo "adicional" con placa "DEF-456", marca "Volvo", modelo "FH", año 2022 y capacidad "5000"
+    Entonces la respuesta tiene código 409
+    Y el mensaje de error contiene "plan con mayor capacidad"

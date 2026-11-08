@@ -59,3 +59,8 @@ Característica: US11 Gestionar los usuarios de la empresa
     Y que "luis@andes.pe" definió la contraseña "Clave-De-Luis-2026" con su enlace de invitación
     Cuando "luis@andes.pe" intenta listar los usuarios
     Entonces la respuesta tiene código 403
+
+  Escenario: Cambiar el rol de un usuario que no existe responde 404
+    Cuando el administrador cambia el rol de un usuario inexistente a "OPERATIONS_MANAGER"
+    Entonces la respuesta tiene código 404
+    Y el mensaje de error es "El usuario no existe."

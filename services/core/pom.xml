@@ -13,7 +13,7 @@
 
   <groupId>com.nexus</groupId>
   <artifactId>rinde-backend</artifactId>
-  <version>0.3.0</version>
+  <version>0.3.1</version>
   <name>rinde-backend</name>
   <description>Backend de RINDE by NEXUS: monolito modular con un paquete por bounded context</description>
 

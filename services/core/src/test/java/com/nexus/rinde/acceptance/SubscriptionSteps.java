@@ -11,15 +11,14 @@ import com.nexus.rinde.subscription.infrastructure.services.PaymentWebhookSignat
 import com.nexus.rinde.subscription.interfaces.rest.resources.PaymentWebhookResource;
 import com.nexus.rinde.subscription.interfaces.acl.SubscriptionSuspended;
 import com.nexus.rinde.support.CapturedEvents;
+import com.nexus.rinde.support.ContextDoubles;
 import com.nexus.rinde.subscription.infrastructure.persistence.jpa.repositories.PlanRepository;
 import com.nexus.rinde.subscription.infrastructure.persistence.jpa.repositories.SubscriptionRepository;
-import com.nexus.rinde.support.ExpenseApi;
-import com.nexus.rinde.support.FleetApi;
 import com.nexus.rinde.support.RelativeDates;
 import com.nexus.rinde.support.SubscriptionApi;
-import com.nexus.rinde.support.TripApi;
 import io.cucumber.java.es.Cuando;
 import io.cucumber.java.es.Dado;
+import io.cucumber.java.es.Entonces;
 import io.cucumber.java.es.Y;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -41,9 +40,7 @@ public class SubscriptionSteps {
   private final SubscriptionRepository subscriptionRepository;
   private final JdbcTemplate jdbcTemplate;
   private final SubscriptionApi subscriptionApi;
-  private final FleetApi fleetApi;
-  private final TripApi tripApi;
-  private final ExpenseApi expenseApi;
+  private final ContextDoubles doubles;
   private final PaymentWebhookSignature webhookSignature;
   private final SubscriptionLifecycleService lifecycleService;
   private final Clock clock;
@@ -52,10 +49,6 @@ public class SubscriptionSteps {
   private String latestPaymentAmount;
   private PaymentWebhookResource latestWebhook;
   private Instant confirmedExpiresAt;
-  private int restrictedTripStatus;
-  private int restrictedVehicleStatus;
-  private int finishTripStatus;
-  private int registerExpenseStatus;
 
   public SubscriptionSteps(
       ScenarioContext context,
@@ -66,6 +59,7 @@ public class SubscriptionSteps {
       SubscriptionLifecycleService lifecycleService,
       Clock clock,
       CapturedEvents capturedEvents,
+      ContextDoubles doubles,
       MockMvc mockMvc,
       ObjectMapper objectMapper) {
     this.context = context;
@@ -73,9 +67,7 @@ public class SubscriptionSteps {
     this.subscriptionRepository = subscriptionRepository;
     this.jdbcTemplate = jdbcTemplate;
     this.subscriptionApi = new SubscriptionApi(mockMvc, objectMapper);
-    this.fleetApi = new FleetApi(mockMvc, objectMapper);
-    this.tripApi = new TripApi(mockMvc, objectMapper);
-    this.expenseApi = new ExpenseApi(mockMvc, objectMapper);
+    this.doubles = doubles;
     this.webhookSignature = webhookSignature;
     this.lifecycleService = lifecycleService;
     this.clock = clock;
@@ -90,18 +82,13 @@ public class SubscriptionSteps {
     context.rememberPlanId(name, plan.getPlanId().toString());
   }
 
+  /** La flota de la empresa la responde el doble de Fleet que consulta core para validar el plan. */
   @Dado("que la empresa tiene {int} vehículos registrados")
-  public void theCompanyHasRegisteredVehicles(int count) throws Exception {
-    String token = context.currentAdministratorToken();
+  public void theCompanyHasRegisteredVehicles(int count) {
+    UUID tenantId = UUID.fromString(context.tenantIdOf(TENANT_RUC));
     for (int i = 1; i <= count; i++) {
-      String plate = "T" + String.format("%07d", i);
-      var response =
-          fleetApi
-              .registerVehicle(
-                  token, plate, "Volvo", "FH540", 2022, new BigDecimal("15000.00"))
-              .andReturn()
-              .getResponse();
-      assertThat(response.getStatus()).as("registro de vehículo %s", plate).isEqualTo(201);
+      doubles.addVehicle(
+          tenantId, UUID.randomUUID(), "T" + String.format("%07d", i), "Volvo", "FH540");
     }
   }
 
@@ -401,73 +388,20 @@ public class SubscriptionSteps {
   @Cuando("el proceso diario de suscripciones avanza los estados")
   public void theDailySubscriptionLifecycleAdvancesStatuses() {
     lifecycleService.advanceSubscriptions();
+  }
+
+  /**
+   * Core solo registra la suspensión y publica su evento; el estado de la empresa lo aplica IAM
+   * al consumirlo, y esa comprobación vive en services/iam.
+   */
+  @Entonces("la suscripción queda suspendida y se publica el evento de suspensión")
+  public void theSubscriptionIsSuspendedAndTheEventIsPublished() {
     assertThat(capturedEvents.last(SubscriptionSuspended.class)).isPresent();
     var subscription =
         subscriptionRepository
             .findById(UUID.fromString(context.latestSubscriptionId()))
             .orElseThrow();
     assertThat(subscription.getStatus().name()).isEqualTo("SUSPENDED");
-    String tenantStatus =
-        jdbcTemplate.queryForObject(
-            "select status from iam.tenants where id = ?",
-            String.class,
-            UUID.fromString(context.tenantIdOf(TENANT_RUC)));
-    assertThat(tenantStatus).isEqualTo("RESTRICTED");
-  }
-
-  @Cuando("el administrador intenta programar un viaje nuevo y registrar otro vehículo")
-  public void theAdministratorTriesToScheduleTripAndRegisterVehicle() throws Exception {
-    context.record(
-        tripApi.schedule(
-            context.currentAdministratorToken(),
-            "Lima",
-            "Arequipa",
-            "Carga de prueba",
-            null,
-            java.time.LocalDate.now(clock).plusDays(1),
-            false));
-    restrictedTripStatus = context.statusCode();
-    context.record(
-        fleetApi.registerVehicle(
-            context.currentAdministratorToken(),
-            "LIM" + UUID.randomUUID().toString().substring(0, 6),
-            "Volvo",
-            "FH",
-            2022,
-            new BigDecimal("5000.00")));
-    restrictedVehicleStatus = context.statusCode();
-  }
-
-  @Y("se impiden ambos registros porque la empresa debe regularizar la suscripción")
-  public void bothNewOperationsAreBlockedForRestrictedTenant() {
-    assertThat(restrictedTripStatus).isEqualTo(403);
-    assertThat(restrictedVehicleStatus).isEqualTo(403);
-  }
-
-  @Cuando("el conductor finaliza el viaje en ruta y registra un gasto")
-  public void theDriverFinishesInRouteTripAndRegistersExpense() throws Exception {
-    context.record(
-        tripApi.finish(
-            context.accessTokenOf("luis@andes.pe"), context.tripIdOf("viaje")));
-    finishTripStatus = context.statusCode();
-    context.record(
-        expenseApi.register(
-            context.accessTokenOf("luis@andes.pe"),
-            context.tripIdOf("viaje"),
-            "FUEL",
-            new BigDecimal("25.00"),
-            "PEN",
-            java.time.LocalDate.now(clock),
-            "US40-EXP-" + UUID.randomUUID(),
-            null,
-            null));
-    registerExpenseStatus = context.statusCode();
-  }
-
-  @Y("se permiten finalizar el viaje y registrar el gasto")
-  public void finishingTripAndRegisteringExpenseRemainAllowed() {
-    assertThat(finishTripStatus).isEqualTo(200);
-    assertThat(registerExpenseStatus).isEqualTo(201);
   }
 
   private void sendPaymentWebhook(PaymentStatus status, String failureReason, String eventId)

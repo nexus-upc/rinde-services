@@ -1,19 +1,14 @@
 package com.nexus.rinde.iam.interfaces.acl;
 
+import com.nexus.rinde.shared.infrastructure.security.TenantStatusProvider;
 import java.util.Optional;
 import java.util.UUID;
-import com.nexus.rinde.shared.infrastructure.security.TenantStatusProvider;
 
 /**
- * Fachada pública de IAM & Tenancy para los demás contextos. Todas las consultas se limitan a la
- * empresa indicada: un usuario de otra empresa se trata como inexistente.
+ * Consultas que core necesita de IAM & Tenancy: estado de la empresa para la seguridad y correo del
+ * administrador para los avisos. Ambas se limitan a la empresa indicada.
  */
 public interface IamContextFacade extends TenantStatusProvider {
-
-  Optional<UserSummary> findUserById(UUID tenantId, UUID userId);
-
-  /** Indica si el usuario existe en la empresa, está activo y tiene el rol dado (por nombre). */
-  boolean isActiveUserWithRole(UUID tenantId, UUID userId, String role);
 
   /** Estado de la empresa (PENDING_VERIFICATION, ACTIVE o RESTRICTED), si existe. */
   @Override

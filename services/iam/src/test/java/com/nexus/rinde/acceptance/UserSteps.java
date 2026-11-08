@@ -12,6 +12,7 @@ import io.cucumber.java.es.Cuando;
 import io.cucumber.java.es.Dado;
 import io.cucumber.java.es.Y;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.StreamSupport;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -91,6 +92,14 @@ public class UserSteps {
     context.record(
         api.updateUser(
             context.currentAdministratorToken(), context.userIdOf(email), Map.of("role", role)));
+  }
+
+  /** Un identificador que no pertenece a ningún usuario debe responder 404 sin revelar nada. */
+  @Cuando("el administrador cambia el rol de un usuario inexistente a {string}")
+  public void theAdministratorChangesRoleOfUnknownUser(String role) throws Exception {
+    context.record(
+        api.updateUser(
+            context.currentAdministratorToken(), UUID.randomUUID().toString(), Map.of("role", role)));
   }
 
   @Cuando("el administrador deshabilita al usuario {string}")

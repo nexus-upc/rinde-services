@@ -55,11 +55,6 @@ rinde:
   platform:
     jwt:
       secret: ${RINDE_PLATFORM_JWT_SECRET:}
-    bootstrap:
-      enabled: ${RINDE_PLATFORM_BOOTSTRAP_ENABLED:false}
-      name: ${RINDE_PLATFORM_BOOTSTRAP_NAME:}
-      email: ${RINDE_PLATFORM_BOOTSTRAP_EMAIL:}
-      password: ${RINDE_PLATFORM_BOOTSTRAP_PASSWORD:}
   messaging:
     exchange: ${RINDE_EVENTS_EXCHANGE:rinde.events}
     notification:
@@ -70,7 +65,6 @@ rinde:
     jwt:
       # Mínimo 32 caracteres.
       secret: ${JWT_SECRET}
-      expiration-hours: 8
   billing:
     simulation:
       enabled: ${RINDE_BILLING_SIMULATION_ENABLED:false}
@@ -81,19 +75,12 @@ rinde:
   expense:
     remote-enabled: ${RINDE_EXPENSE_REMOTE_ENABLED:true}
     base-url: ${EXPENSE_SERVICE_URL:http://localhost:8084}
-    tokens:
-      invitation-validity-hours: 48
-      password-reset-validity-hours: 1
-      email-verification-validity-hours: 48
   trip:
     remote-enabled: ${RINDE_TRIP_REMOTE_ENABLED:true}
     base-url: ${TRIP_SERVICE_URL:http://localhost:8082}
   fleet:
     remote-enabled: ${RINDE_FLEET_REMOTE_ENABLED:true}
     base-url: ${FLEET_SERVICE_URL:http://localhost:8083}
-    maintenance-alerts:
-      # Cron de la revisión de mantenimientos próximos o vencidos (todos los días a las 6:00).
-      cron: "0 0 6 * * *"
   notification:
     retry:
       # Esperas en minutos antes de cada reintento; tras la quinta falla el aviso queda FAILED.

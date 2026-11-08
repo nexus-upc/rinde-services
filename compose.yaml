@@ -26,7 +26,7 @@ services:
     volumes:
       - postgres-core-data:/var/lib/postgresql/data
   core:
-    image: rinde/core:${CORE_VERSION:-0.3.0}
+    image: rinde/core:${CORE_VERSION:-0.3.1}
     build:
       context: .
       dockerfile: services/core/Dockerfile
