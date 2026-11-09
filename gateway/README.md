@@ -8,9 +8,9 @@ El gateway no tiene lógica de negocio. Los servicios vuelven a validar el token
 
 | Ruta | Destino | Variable |
 | --- | --- | --- |
-| `/api/v1/platform/auth/**`, `/api/v1/platform/me`, `/api/v1/platform/overview`, `/api/v1/platform/companies/**`, `/api/v1/platform/audit/identity`, `/api/v1/platform/demo-mailbox/**` | IAM | `IAM_SERVICE_URL` |
+| `/api/v1/platform/auth/**`, `/api/v1/platform/me`, `/api/v1/platform/overview`, `/api/v1/platform/companies/**`, `/api/v1/platform/audit/identity`, `/api/v1/platform/demo-mailbox/**`, `/api/v1/platform/demo-requests` | IAM | `IAM_SERVICE_URL` |
 | `/api/v1/platform/billing/**`, `/api/v1/platform/plans/**`, `/api/v1/platform/subscriptions/**`, `/api/v1/platform/payments/**`, `/api/v1/platform/audit/billing` | Monolito (Subscriptions & Billing) | `MONOLITH_URL` |
-| `/api/v1/auth/**`, `/api/v1/tenants/**`, `/api/v1/users/**`, `/api/v1/demo/features` | IAM (`/api/v1/...`) | `IAM_SERVICE_URL` |
+| `/api/v1/auth/**`, `/api/v1/tenants/**`, `/api/v1/users/**`, `/api/v1/demo/features`, `/api/v1/public/demo-requests` | IAM (`/api/v1/...`) | `IAM_SERVICE_URL` |
 | `/api/v1/trips/{id}/settlement/**` | Monolito (Settlement) | `MONOLITH_URL` |
 | `/api/v1/trips/{id}/expenses/**`, `/api/v1/expenses/**` | Expense | `EXPENSE_SERVICE_URL` |
 | `/api/v1/trips/{id}/incidents/**`, `/api/v1/incidents/**` | Incident | `INCIDENT_SERVICE_URL` |
@@ -38,6 +38,7 @@ Estas peticiones pasan sin `Authorization`:
 - `POST /api/v1/auth/sign-in`.
 - `POST /api/v1/auth/password-reset`.
 - `POST /api/v1/auth/password`.
+- `POST /api/v1/public/demo-requests` (solicitud de demostración desde la landing, US06).
 - `POST /api/v1/platform/auth/sign-in` (inicio de sesión del dueño).
 - `GET /api/v1/demo/features` (solo informa si el buzón de demostración está habilitado).
 - Cualquier método sobre `/api/v1/billing/webhooks/**`. El monolito valida la firma del webhook.
@@ -67,7 +68,7 @@ Las variables se leen del archivo `.env` de la raíz, que no se sube a Git. Copi
 | `EXPENSE_SERVICE_URL` | No | `http://localhost:8084` | Dirección de `rinde-expense-service`. |
 | `INCIDENT_SERVICE_URL` | No | `http://localhost:8085` | Dirección de `rinde-incident-service`. |
 | `MONOLITH_URL` | No | `http://localhost:8080` | Dirección del monolito `rinde-backend`. |
-| `CORS_ALLOWED_ORIGINS` | No | `http://localhost:4200` | Orígenes permitidos, separados por comas. |
+| `CORS_ALLOWED_ORIGINS` | No | `http://localhost:4200,http://localhost:4300` | Orígenes permitidos, separados por comas. El valor por defecto cubre la web Angular (4200) y la landing (4300) en desarrollo. |
 
 ## Puesta en marcha
 

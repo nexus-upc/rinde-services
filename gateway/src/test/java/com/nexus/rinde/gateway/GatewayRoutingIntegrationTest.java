@@ -193,6 +193,36 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
   }
 
   @Test
+  void sendsPublicDemoRequestsToIamWithoutToken() {
+    String path = "/api/v1/public/demo-requests";
+    IAM.stubFor(
+        post(urlEqualTo(path))
+            .willReturn(
+                aResponse()
+                    .withStatus(201)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("{\"status\":\"RECEIVED\"}")));
+
+    webTestClient
+        .post()
+        .uri(path)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"fullName\":\"Ana Rojas Paredes\"}")
+        .exchange()
+        .expectStatus()
+        .isCreated()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("RECEIVED");
+
+    IAM.verify(postRequestedFor(urlEqualTo(path)));
+    assertThat(IAM.findAll(postRequestedFor(urlEqualTo(path))).get(0).containsHeader(AUTHORIZATION))
+        .isFalse();
+    webTestClient.get().uri(path).exchange().expectStatus().isUnauthorized();
+    MONOLITH.verify(0, anyRequestedFor(anyUrl()));
+  }
+
+  @Test
   void routesUsersAndTenantsToIam() {
     String token = validToken();
     IAM.stubFor(

@@ -26,6 +26,7 @@ abstract class AbstractGatewayIntegrationTest {
   static final String TEST_SECRET = "gateway-test-secret-with-at-least-32-chars";
   static final String OTHER_SECRET = "another-test-secret-with-at-least-32-chars";
   static final String ALLOWED_ORIGIN = "http://localhost:4200";
+  static final String LANDING_ORIGIN = "http://localhost:4300";
 
   static final WireMockServer IAM = new WireMockServer(wireMockConfig().dynamicPort());
   static final WireMockServer MONOLITH = new WireMockServer(wireMockConfig().dynamicPort());
@@ -54,7 +55,7 @@ abstract class AbstractGatewayIntegrationTest {
     registry.add("EXPENSE_SERVICE_URL", () -> "http://localhost:" + EXPENSE.port());
     registry.add("INCIDENT_SERVICE_URL", () -> "http://localhost:" + INCIDENT.port());
     registry.add("JWT_SECRET", () -> TEST_SECRET);
-    registry.add("CORS_ALLOWED_ORIGINS", () -> ALLOWED_ORIGIN);
+    registry.add("CORS_ALLOWED_ORIGINS", () -> ALLOWED_ORIGIN + "," + LANDING_ORIGIN);
   }
 
   @BeforeEach

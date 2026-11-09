@@ -23,6 +23,7 @@ public class AnonymousRequestMatcher {
           new Rule(HttpMethod.POST, "/api/v1/auth/sign-in"),
           new Rule(HttpMethod.POST, "/api/v1/auth/password-reset"),
           new Rule(HttpMethod.POST, "/api/v1/auth/password"),
+          new Rule(HttpMethod.POST, "/api/v1/public/demo-requests"),
           new Rule(null, "/api/v1/billing/webhooks/**"),
           new Rule(null, "/v3/api-docs/**"),
           new Rule(null, "/swagger-ui.html"),

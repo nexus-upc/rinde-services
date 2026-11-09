@@ -19,7 +19,7 @@ spring:
               uri: ${IAM_SERVICE_URL:http://localhost:8081}
               order: 0
               predicates:
-                - Path=/api/v1/platform/auth/**,/api/v1/platform/me,/api/v1/platform/overview,/api/v1/platform/companies/**,/api/v1/platform/audit/identity,/api/v1/platform/demo-mailbox/**
+                - Path=/api/v1/platform/auth/**,/api/v1/platform/me,/api/v1/platform/overview,/api/v1/platform/companies/**,/api/v1/platform/audit/identity,/api/v1/platform/demo-mailbox/**,/api/v1/platform/demo-requests
             - id: platform-billing
               uri: ${MONOLITH_URL:http://localhost:8080}
               order: 1
@@ -29,7 +29,7 @@ spring:
               uri: ${IAM_SERVICE_URL:http://localhost:8081}
               order: 1
               predicates:
-                - Path=/api/v1/auth/**,/api/v1/tenants/**,/api/v1/users/**,/api/v1/demo/features
+                - Path=/api/v1/auth/**,/api/v1/tenants/**,/api/v1/users/**,/api/v1/demo/features,/api/v1/public/demo-requests
             - id: iam-api-docs
               uri: ${IAM_SERVICE_URL:http://localhost:8081}
               order: 2
@@ -112,7 +112,8 @@ spring:
           globalcors:
             cors-configurations:
               '[/**]':
-                allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+                # Angular (4200) y la landing (4300) en desarrollo; en otros entornos se define en el .env.
+                allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:4300}
                 allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
                 allowed-headers: Authorization,Content-Type,X-Correlation-Id
                 exposed-headers: X-Correlation-Id
