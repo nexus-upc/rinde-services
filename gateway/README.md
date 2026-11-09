@@ -13,6 +13,7 @@ El gateway no tiene lógica de negocio. Los servicios vuelven a validar el token
 | `/api/v1/auth/**`, `/api/v1/tenants/**`, `/api/v1/users/**`, `/api/v1/demo/features` | IAM (`/api/v1/...`) | `IAM_SERVICE_URL` |
 | `/api/v1/trips/{id}/settlement/**` | Monolito (Settlement) | `MONOLITH_URL` |
 | `/api/v1/trips/{id}/expenses/**`, `/api/v1/expenses/**` | Expense | `EXPENSE_SERVICE_URL` |
+| `/api/v1/trips/{id}/incidents/**`, `/api/v1/incidents/**` | Incident | `INCIDENT_SERVICE_URL` |
 | `/api/v1/trips`, `/api/v1/trips/**` (resto de viajes) | Trip (`/api/v1/trips/...`) | `TRIP_SERVICE_URL` |
 | `/api/v1/vehicles/**`, `/api/v1/drivers/**`, `/api/v1/maintenances/**` | Fleet | `FLEET_SERVICE_URL` |
 | `/api/v1/**` (resto de rutas) | Monolito | `MONOLITH_URL` |
@@ -20,6 +21,7 @@ El gateway no tiene lógica de negocio. Los servicios vuelven a validar el token
 | `/v3/api-docs/trip` | Trip (`/v3/api-docs`) | `TRIP_SERVICE_URL` |
 | `/v3/api-docs/fleet` | Fleet (`/v3/api-docs`) | `FLEET_SERVICE_URL` |
 | `/v3/api-docs/expense` | Expense (`/v3/api-docs`) | `EXPENSE_SERVICE_URL` |
+| `/v3/api-docs/incident` | Incident (`/v3/api-docs`) | `INCIDENT_SERVICE_URL` |
 | `/v3/api-docs/monolith` | Monolito (`/v3/api-docs`) | `MONOLITH_URL` |
 | `/swagger-ui.html` | Swagger UI con los documentos de todos los servicios | |
 | `/api/internal/**` | Ninguno. Responde 404 y nunca se reenvía | |
@@ -63,6 +65,7 @@ Las variables se leen del archivo `.env` de la raíz, que no se sube a Git. Copi
 | `TRIP_SERVICE_URL` | No | `http://localhost:8082` | Dirección de `rinde-trip-service`. |
 | `FLEET_SERVICE_URL` | No | `http://localhost:8083` | Dirección de `rinde-fleet-service`. |
 | `EXPENSE_SERVICE_URL` | No | `http://localhost:8084` | Dirección de `rinde-expense-service`. |
+| `INCIDENT_SERVICE_URL` | No | `http://localhost:8085` | Dirección de `rinde-incident-service`. |
 | `MONOLITH_URL` | No | `http://localhost:8080` | Dirección del monolito `rinde-backend`. |
 | `CORS_ALLOWED_ORIGINS` | No | `http://localhost:4200` | Orígenes permitidos, separados por comas. |
 

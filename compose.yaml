@@ -201,6 +201,43 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+  postgres-incident:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: rinde_incident
+      POSTGRES_USER: rinde
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configurar POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rinde -d rinde_incident"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres-incident-data:/var/lib/postgresql/data
+  incident:
+    image: rinde/incident:${INCIDENT_VERSION:-0.1.0}
+    build:
+      context: .
+      dockerfile: services/incident/Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://postgres-incident:5432/rinde_incident
+      DB_USERNAME: rinde
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Configurar POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?Configurar JWT_SECRET}
+      RINDE_PLATFORM_JWT_SECRET: ${RINDE_PLATFORM_JWT_SECRET:-}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?Configurar RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Configurar RABBITMQ_PASSWORD}
+      IAM_SERVICE_URL: http://iam:8081
+      TRIP_SERVICE_URL: http://trip:8082
+      FLEET_SERVICE_URL: http://fleet:8083
+    ports:
+      - "127.0.0.1:${INCIDENT_PORT:-8085}:8085"
+    depends_on:
+      postgres-incident:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
   gateway:
     image: rinde/gateway:${GATEWAY_VERSION:-0.3.0}
     build:
@@ -214,6 +251,7 @@ services:
       TRIP_SERVICE_URL: http://trip:8082
       FLEET_SERVICE_URL: http://fleet:8083
       EXPENSE_SERVICE_URL: http://expense:8084
+      INCIDENT_SERVICE_URL: http://incident:8085
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200}
     ports:
       - "127.0.0.1:${GATEWAY_PORT:-8000}:8000"
@@ -223,6 +261,7 @@ services:
       - trip
       - fleet
       - expense
+      - incident
 volumes:
   rabbitmq-data:
   postgres-core-data:
@@ -230,3 +269,4 @@ volumes:
   postgres-trip-data:
   postgres-fleet-data:
   postgres-expense-data:
+  postgres-incident-data:
