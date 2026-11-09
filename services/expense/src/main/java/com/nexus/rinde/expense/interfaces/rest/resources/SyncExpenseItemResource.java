@@ -2,7 +2,6 @@ package com.nexus.rinde.expense.interfaces.rest.resources;
 
 import com.nexus.rinde.expense.domain.model.valueobjects.ExpenseCategory;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,7 +10,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/** Ítem individual para sincronización en lote de gastos capturados sin conexión (US22). */
+/**
+ * Ítem individual para sincronización en lote de gastos capturados sin conexión (US22). El
+ * comprobante se sube después, con el id del gasto que devuelve la sincronización. Un campo
+ * evidence heredado se ignora.
+ */
 @Schema(description = "Datos de un gasto registrado en modo offline para sincronización")
 public record SyncExpenseItemResource(
     @NotNull(message = "El identificador del viaje es obligatorio")
@@ -37,6 +40,4 @@ public record SyncExpenseItemResource(
         @Schema(
             description = "Identificador único de idempotencia generado en el móvil",
             example = "OFFLINE-EXP-001")
-        String idempotencyKey,
-    @Valid @Schema(description = "Evidencia fotográfica adjunta al gasto (opcional)")
-        EvidenceInputResource evidence) {}
+        String idempotencyKey) {}

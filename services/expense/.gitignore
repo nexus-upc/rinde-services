@@ -24,3 +24,6 @@ logs/
 # Variables de entorno locales (secretos)
 .env
 
+
+# Comprobantes guardados en local (solo desarrollo)
+data/
