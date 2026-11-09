@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -33,6 +34,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -134,6 +136,44 @@ public class DriversController {
                 () ->
                     new ResourceNotFoundException(
                         "La cuenta no está vinculada a ningún conductor."));
+    return ResponseEntity.ok(DriverResourceAssembler.toResource(driver));
+  }
+
+  @PutMapping("/{id}/account")
+  @PreAuthorize("hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')")
+  @Operation(
+      summary = "Cambiar o retirar la cuenta vinculada a un conductor",
+      description =
+          "Recibe {\"userId\": \"...\"} para vincular una cuenta, o {\"userId\": null} para retirar el vínculo. Aplica las validaciones del alta: cuenta DRIVER activa de la empresa y no vinculada a otro conductor. Volver a vincular la misma cuenta responde 200 sin cambios.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Vínculo actualizado o sin cambios"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "La cuenta no tiene rol DRIVER o el identificador no es válido",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "El conductor o la cuenta no existen en la empresa",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "409",
+        description = "La cuenta no está activa o ya está vinculada a otro conductor",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public ResponseEntity<DriverResource> updateAccount(
+      @PathVariable UUID id, @RequestBody(required = false) Map<String, Object> body) {
+    Driver driver =
+        driverCommandService.handle(
+            DriverCommandAssembler.toLinkCommand(TenantContext.tenantId(), id, body));
     return ResponseEntity.ok(DriverResourceAssembler.toResource(driver));
   }
 

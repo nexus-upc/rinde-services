@@ -10,15 +10,16 @@ import static org.mockito.Mockito.when;
 import com.nexus.rinde.fleet.application.internal.outboundservices.acl.IamAccountClient;
 import com.nexus.rinde.fleet.application.internal.outboundservices.acl.IamUserAccount;
 import com.nexus.rinde.fleet.domain.model.aggregates.Driver;
+import com.nexus.rinde.fleet.domain.model.commands.LinkDriverAccountCommand;
 import com.nexus.rinde.fleet.domain.model.commands.RegisterDriverCommand;
 import com.nexus.rinde.fleet.infrastructure.persistence.jpa.repositories.DriverRepository;
 import com.nexus.rinde.shared.domain.exceptions.BusinessRuleException;
 import com.nexus.rinde.shared.domain.exceptions.ConflictException;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -35,13 +36,7 @@ class DriverCommandServiceImplTest {
   private final UUID tenantId = UUID.randomUUID();
   private final UUID userId = UUID.randomUUID();
 
-  @BeforeEach
-  void noDuplicatedDocumentOrLicense() {
-    when(driverRepository.existsByTenantIdAndDocumentNumber(any(), any())).thenReturn(false);
-    when(driverRepository.existsByTenantIdAndLicenseNumber(any(), any())).thenReturn(false);
-  }
-
-  private RegisterDriverCommand command(UUID linkedUserId) {
+  private RegisterDriverCommand registerCommand(UUID linkedUserId) {
     return new RegisterDriverCommand(
         tenantId,
         linkedUserId,
@@ -53,11 +48,36 @@ class DriverCommandServiceImplTest {
         LocalDate.now().plusYears(2));
   }
 
+  private Driver driver(UUID linkedUserId) {
+    return new Driver(
+        tenantId,
+        linkedUserId,
+        "Luis Quispe",
+        "DNI",
+        "10203040",
+        "Q10203040",
+        "A-IIIc",
+        LocalDate.now().plusYears(2),
+        LocalDate.now());
+  }
+
+  private void noDuplicatedDocumentOrLicense() {
+    when(driverRepository.existsByTenantIdAndDocumentNumber(any(), any())).thenReturn(false);
+    when(driverRepository.existsByTenantIdAndLicenseNumber(any(), any())).thenReturn(false);
+  }
+
+  private void iamReports(String role, String status) {
+    when(iamAccountClient.findUserAccount(tenantId, userId))
+        .thenReturn(Optional.of(new IamUserAccount(userId, role, status)));
+  }
+
   @Test
   void registersADriverWithoutAccountAndDoesNotAskIam() {
-    when(driverRepository.save(any(Driver.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    noDuplicatedDocumentOrLicense();
+    when(driverRepository.save(any(Driver.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
-    Driver driver = service.handle(command(null));
+    Driver driver = service.handle(registerCommand(null));
 
     assertThat(driver.getUserId()).isNull();
     verify(iamAccountClient, never()).findUserAccount(any(), any());
@@ -65,9 +85,10 @@ class DriverCommandServiceImplTest {
 
   @Test
   void rejectsAnAccountThatIamDoesNotFindInTheTenant() {
+    noDuplicatedDocumentOrLicense();
     when(iamAccountClient.findUserAccount(tenantId, userId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.handle(command(userId)))
+    assertThatThrownBy(() -> service.handle(registerCommand(userId)))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("La cuenta no existe en la empresa.");
     verify(driverRepository, never()).save(any());
@@ -75,37 +96,136 @@ class DriverCommandServiceImplTest {
 
   @Test
   void rejectsAnAccountWhoseRoleIsNotDriver() {
-    when(iamAccountClient.findUserAccount(tenantId, userId))
-        .thenReturn(Optional.of(new IamUserAccount(userId, "OPERATIONS_MANAGER")));
+    noDuplicatedDocumentOrLicense();
+    iamReports("OPERATIONS_MANAGER", "ACTIVE");
 
-    assertThatThrownBy(() -> service.handle(command(userId)))
+    assertThatThrownBy(() -> service.handle(registerCommand(userId)))
         .isInstanceOf(BusinessRuleException.class)
         .hasMessage("La cuenta debe tener el rol de conductor.");
     verify(driverRepository, never()).save(any());
   }
 
   @Test
-  void rejectsAnAccountAlreadyLinkedToAnotherDriver() {
-    when(iamAccountClient.findUserAccount(tenantId, userId))
-        .thenReturn(Optional.of(new IamUserAccount(userId, "DRIVER")));
-    when(driverRepository.existsByTenantIdAndUserId(tenantId, userId)).thenReturn(true);
+  void rejectsAnAccountThatIsNotActive() {
+    noDuplicatedDocumentOrLicense();
+    iamReports("DRIVER", "INVITED");
 
-    assertThatThrownBy(() -> service.handle(command(userId)))
+    assertThatThrownBy(() -> service.handle(registerCommand(userId)))
+        .isInstanceOf(ConflictException.class)
+        .hasMessage("La cuenta del conductor no está activa.");
+    verify(driverRepository, never()).save(any());
+  }
+
+  @Test
+  void rejectsAnAccountAlreadyLinkedToAnotherDriver() {
+    noDuplicatedDocumentOrLicense();
+    iamReports("DRIVER", "ACTIVE");
+    when(driverRepository.findAllByTenantIdAndUserId(tenantId, userId))
+        .thenReturn(List.of(driver(userId)));
+
+    assertThatThrownBy(() -> service.handle(registerCommand(userId)))
         .isInstanceOf(ConflictException.class)
         .hasMessage("La cuenta ya está vinculada a otro conductor.");
     verify(driverRepository, never()).save(any());
   }
 
   @Test
-  void linksAFreeDriverAccountOfTheTenant() {
-    when(iamAccountClient.findUserAccount(tenantId, userId))
-        .thenReturn(Optional.of(new IamUserAccount(userId, "DRIVER")));
-    when(driverRepository.existsByTenantIdAndUserId(tenantId, userId)).thenReturn(false);
-    when(driverRepository.save(any(Driver.class))).thenAnswer(invocation -> invocation.getArgument(0));
+  void linksAFreeActiveDriverAccountOfTheTenant() {
+    noDuplicatedDocumentOrLicense();
+    iamReports("DRIVER", "ACTIVE");
+    when(driverRepository.findAllByTenantIdAndUserId(tenantId, userId)).thenReturn(List.of());
+    when(driverRepository.save(any(Driver.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
-    Driver driver = service.handle(command(userId));
+    Driver driver = service.handle(registerCommand(userId));
 
     assertThat(driver.getUserId()).isEqualTo(userId);
     assertThat(driver.getTenantId()).isEqualTo(tenantId);
+  }
+
+  @Test
+  void unlinksTheAccountWithoutAskingIam() {
+    Driver linked = driver(userId);
+    when(driverRepository.findByIdAndTenantId(linked.getId(), tenantId))
+        .thenReturn(Optional.of(linked));
+    when(driverRepository.save(any(Driver.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    Driver driver = service.handle(new LinkDriverAccountCommand(tenantId, linked.getId(), null));
+
+    assertThat(driver.getUserId()).isNull();
+    verify(iamAccountClient, never()).findUserAccount(any(), any());
+  }
+
+  @Test
+  void relinkingTheSameAccountKeepsTheDriverUnchanged() {
+    Driver linked = driver(userId);
+    when(driverRepository.findByIdAndTenantId(linked.getId(), tenantId))
+        .thenReturn(Optional.of(linked));
+    iamReports("DRIVER", "ACTIVE");
+    when(driverRepository.findAllByTenantIdAndUserId(tenantId, userId))
+        .thenReturn(List.of(linked));
+    when(driverRepository.save(any(Driver.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    Driver driver = service.handle(new LinkDriverAccountCommand(tenantId, linked.getId(), userId));
+
+    assertThat(driver.getUserId()).isEqualTo(userId);
+  }
+
+  @Test
+  void linksAnotherActiveAccountToTheDriver() {
+    Driver unlinked = driver(null);
+    when(driverRepository.findByIdAndTenantId(unlinked.getId(), tenantId))
+        .thenReturn(Optional.of(unlinked));
+    iamReports("DRIVER", "ACTIVE");
+    when(driverRepository.findAllByTenantIdAndUserId(tenantId, userId)).thenReturn(List.of());
+    when(driverRepository.save(any(Driver.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    Driver driver = service.handle(new LinkDriverAccountCommand(tenantId, unlinked.getId(), userId));
+
+    assertThat(driver.getUserId()).isEqualTo(userId);
+  }
+
+  @Test
+  void rejectsChangingToAnAccountLinkedToAnotherDriver() {
+    Driver unlinked = driver(null);
+    when(driverRepository.findByIdAndTenantId(unlinked.getId(), tenantId))
+        .thenReturn(Optional.of(unlinked));
+    iamReports("DRIVER", "ACTIVE");
+    when(driverRepository.findAllByTenantIdAndUserId(tenantId, userId))
+        .thenReturn(List.of(driver(userId)));
+
+    assertThatThrownBy(
+            () -> service.handle(new LinkDriverAccountCommand(tenantId, unlinked.getId(), userId)))
+        .isInstanceOf(ConflictException.class)
+        .hasMessage("La cuenta ya está vinculada a otro conductor.");
+    assertThat(unlinked.getUserId()).isNull();
+  }
+
+  @Test
+  void rejectsChangingToAnInactiveAccount() {
+    Driver unlinked = driver(null);
+    when(driverRepository.findByIdAndTenantId(unlinked.getId(), tenantId))
+        .thenReturn(Optional.of(unlinked));
+    iamReports("DRIVER", "DISABLED");
+
+    assertThatThrownBy(
+            () -> service.handle(new LinkDriverAccountCommand(tenantId, unlinked.getId(), userId)))
+        .isInstanceOf(ConflictException.class)
+        .hasMessage("La cuenta del conductor no está activa.");
+    verify(driverRepository, never()).save(any());
+  }
+
+  @Test
+  void rejectsLinkingAnUnknownDriver() {
+    UUID driverId = UUID.randomUUID();
+    when(driverRepository.findByIdAndTenantId(driverId, tenantId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> service.handle(new LinkDriverAccountCommand(tenantId, driverId, userId)))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("El conductor no existe.");
   }
 }

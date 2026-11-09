@@ -27,16 +27,22 @@ public class IamStub {
     apply();
   }
 
-  /** Desde ahora IAM informa la cuenta del usuario en la empresa, con el rol indicado. */
+  /** Desde ahora IAM informa la cuenta del usuario en la empresa, activa y con el rol indicado. */
   public synchronized void registerAccount(UUID tenantId, UUID userId, String role) {
+    registerAccount(tenantId, userId, role, "ACTIVE");
+  }
+
+  /** Desde ahora IAM informa la cuenta del usuario en la empresa, con rol y estado indicados. */
+  public synchronized void registerAccount(
+      UUID tenantId, UUID userId, String role, String status) {
     server.stubFor(
         get(urlPathEqualTo("/api/internal/v1/tenants/" + tenantId + "/users/" + userId))
             .willReturn(
                 okJson(
                     """
                     {"userId":"%s","tenantId":"%s","fullName":"Cuenta de prueba",\
-                    "email":"cuenta@andes.pe","role":"%s","status":"ACTIVE"}"""
-                        .formatted(userId, tenantId, role))));
+                    "email":"cuenta@andes.pe","role":"%s","status":"%s"}"""
+                        .formatted(userId, tenantId, role, status))));
   }
 
   /** Desde ahora IAM informa a la empresa como restringida por su suscripción vencida. */

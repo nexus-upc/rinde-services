@@ -62,6 +62,12 @@ public class IdentitySteps {
     iam.registerAccount(context.tenantOfUser(email), context.userIdOf(email), role);
   }
 
+  /** IAM informa la cuenta con su estado, por ejemplo INVITED o DISABLED. */
+  @Dado("que IAM informa la cuenta de {string} con el rol {string} y el estado {string}")
+  public void iamReportsAccountWithStatus(String email, String role, String status) {
+    iam.registerAccount(context.tenantOfUser(email), context.userIdOf(email), role, status);
+  }
+
   /** IAM responde RESTRICTED para la empresa desde ahora; el filtro lo lee en cada petición. */
   @Dado("que la suscripción de la empresa con RUC {string} está restringida")
   public void theTenantSubscriptionIsRestricted(String ruc) {

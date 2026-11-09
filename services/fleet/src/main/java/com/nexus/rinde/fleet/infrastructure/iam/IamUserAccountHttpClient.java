@@ -46,7 +46,7 @@ public class IamUserAccountHttpClient implements IamAccountClient {
       UserAccountResponse response =
           restClient.get().uri(USER_PATH, tenantId, userId).retrieve().body(UserAccountResponse.class);
       return Optional.ofNullable(response)
-          .map(body -> new IamUserAccount(body.userId(), body.role()));
+          .map(body -> new IamUserAccount(body.userId(), body.role(), body.status()));
     } catch (HttpClientErrorException.NotFound ex) {
       return Optional.empty();
     } catch (RestClientException ex) {
@@ -58,5 +58,5 @@ public class IamUserAccountHttpClient implements IamAccountClient {
   }
 
   /** Campos de GET /api/internal/v1/tenants/{tenantId}/users/{userId} que Fleet usa. */
-  public record UserAccountResponse(UUID userId, String role) {}
+  public record UserAccountResponse(UUID userId, String role, String status) {}
 }

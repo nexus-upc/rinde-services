@@ -281,6 +281,25 @@ public class FleetSteps {
     }
   }
 
+  /** El actor (administrador, responsable o conductor) vincula la cuenta indicada al conductor. */
+  @Cuando("{string} asigna la cuenta {string} al conductor {string}")
+  public void actorAssignsAccountToDriver(String actorEmail, String accountEmail, String driverName)
+      throws Exception {
+    context.record(
+        api.updateDriverAccount(
+            context.accessTokenOf(actorEmail),
+            context.driverIdOf(driverName),
+            context.userIdOf(accountEmail)));
+  }
+
+  @Cuando("{string} retira la cuenta del conductor {string}")
+  public void actorRemovesAccountFromDriver(String actorEmail, String driverName)
+      throws Exception {
+    context.record(
+        api.updateDriverAccount(
+            context.accessTokenOf(actorEmail), context.driverIdOf(driverName), null));
+  }
+
   @Cuando("el conductor {string} consulta su ficha de conductor")
   public void driverConsultsOwnDriver(String email) throws Exception {
     context.record(api.getCurrentDriver(context.accessTokenOf(email)));
@@ -426,6 +445,11 @@ public class FleetSteps {
   public void responseLinksAccountOf(String email) throws Exception {
     assertThat(context.body().get("userId").asText())
         .isEqualTo(context.userIdOf(email).toString());
+  }
+
+  @Y("la respuesta no tiene cuenta vinculada")
+  public void responseHasNoLinkedAccount() throws Exception {
+    assertThat(context.body().get("userId").isNull()).isTrue();
   }
 
   @Y("el conductor queda habilitado")
