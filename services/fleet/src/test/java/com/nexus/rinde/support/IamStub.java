@@ -2,6 +2,7 @@ package com.nexus.rinde.support;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -24,6 +25,18 @@ public class IamStub {
   public synchronized void reset() {
     server.resetMappings();
     apply();
+  }
+
+  /** Desde ahora IAM informa la cuenta del usuario en la empresa, con el rol indicado. */
+  public synchronized void registerAccount(UUID tenantId, UUID userId, String role) {
+    server.stubFor(
+        get(urlPathEqualTo("/api/internal/v1/tenants/" + tenantId + "/users/" + userId))
+            .willReturn(
+                okJson(
+                    """
+                    {"userId":"%s","tenantId":"%s","fullName":"Cuenta de prueba",\
+                    "email":"cuenta@andes.pe","role":"%s","status":"ACTIVE"}"""
+                        .formatted(userId, tenantId, role))));
   }
 
   /** Desde ahora IAM informa a la empresa como restringida por su suscripción vencida. */

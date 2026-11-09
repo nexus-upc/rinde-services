@@ -119,6 +119,10 @@ public class FleetApi {
     return mockMvc.perform(authorized(get("/api/v1/drivers/" + driverId + "/eligibility"), token));
   }
 
+  public ResultActions getCurrentDriver(String token) throws Exception {
+    return mockMvc.perform(authorized(get("/api/v1/drivers/me"), token));
+  }
+
   private ResultActions perform(
       MockHttpServletRequestBuilder request, String token, Object body) throws Exception {
     return mockMvc.perform(

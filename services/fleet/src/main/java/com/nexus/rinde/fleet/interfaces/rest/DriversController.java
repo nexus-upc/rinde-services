@@ -4,6 +4,7 @@ import com.nexus.rinde.fleet.domain.model.aggregates.Driver;
 import com.nexus.rinde.fleet.domain.model.commands.RegisterDriverCommand;
 import com.nexus.rinde.fleet.domain.model.queries.CheckDriverEligibilityQuery;
 import com.nexus.rinde.fleet.domain.model.queries.GetDriverByIdQuery;
+import com.nexus.rinde.fleet.domain.model.queries.GetDriverByUserIdQuery;
 import com.nexus.rinde.fleet.domain.model.queries.ListDriversQuery;
 import com.nexus.rinde.fleet.domain.model.valueobjects.DriverEligibility;
 import com.nexus.rinde.fleet.domain.services.DriverCommandService;
@@ -72,7 +73,7 @@ public class DriversController {
   @Operation(
       summary = "Registrar un conductor (US13)",
       description =
-          "Registra un conductor con sus datos de licencia. Si la licencia está vencida, el conductor no queda habilitado.")
+          "Registra un conductor con sus datos de licencia. Si la licencia está vencida, el conductor no queda habilitado. Si indica userId, la cuenta debe ser DRIVER de la empresa y no estar vinculada a otro conductor.")
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Conductor registrado"),
     @ApiResponse(
@@ -107,6 +108,33 @@ public class DriversController {
   public ResponseEntity<List<DriverResource>> list() {
     List<Driver> list = driverQueryService.handle(new ListDriversQuery(TenantContext.tenantId()));
     return ResponseEntity.ok(list.stream().map(DriverResourceAssembler::toResource).toList());
+  }
+
+  @GetMapping("/me")
+  @PreAuthorize("hasRole('DRIVER')")
+  @Operation(
+      summary = "Consultar mi ficha de conductor",
+      description =
+          "Devuelve el conductor vinculado a la cuenta del token. Si la cuenta no está vinculada, responde 404.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Conductor vinculado a la cuenta"),
+    @ApiResponse(
+        responseCode = "404",
+        description = "La cuenta no está vinculada a ningún conductor",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public ResponseEntity<DriverResource> currentDriver() {
+    Driver driver =
+        driverQueryService
+            .handle(new GetDriverByUserIdQuery(TenantContext.tenantId(), TenantContext.userId()))
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "La cuenta no está vinculada a ningún conductor."));
+    return ResponseEntity.ok(DriverResourceAssembler.toResource(driver));
   }
 
   @GetMapping("/{id}")

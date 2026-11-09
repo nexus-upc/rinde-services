@@ -71,6 +71,10 @@ public class ScenarioContext {
     return userIds.get(email);
   }
 
+  public UUID tenantOfUser(String email) {
+    return userTenants.get(email);
+  }
+
   /** Devuelve el token del usuario y lo emite la primera vez que se necesita. */
   public String accessTokenOf(String email) {
     return accessTokens.computeIfAbsent(

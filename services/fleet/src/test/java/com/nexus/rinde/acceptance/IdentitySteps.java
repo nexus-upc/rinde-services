@@ -56,6 +56,12 @@ public class IdentitySteps {
     context.rememberAccessToken(email, context.accessTokenOf(email));
   }
 
+  /** IAM informa la cuenta en la empresa donde el usuario fue invitado, con el rol indicado. */
+  @Dado("que IAM informa la cuenta de {string} con el rol {string}")
+  public void iamReportsAccount(String email, String role) {
+    iam.registerAccount(context.tenantOfUser(email), context.userIdOf(email), role);
+  }
+
   /** IAM responde RESTRICTED para la empresa desde ahora; el filtro lo lee en cada petición. */
   @Dado("que la suscripción de la empresa con RUC {string} está restringida")
   public void theTenantSubscriptionIsRestricted(String ruc) {
