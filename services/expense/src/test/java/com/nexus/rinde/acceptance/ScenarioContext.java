@@ -58,6 +58,19 @@ public class ScenarioContext {
     }
   }
 
+  /** Bytes de la última respuesta, para comprobar la lectura de archivos. */
+  public byte[] lastResponseBytes() {
+    return lastResult.getResponse().getContentAsByteArray();
+  }
+
+  public String lastContentType() {
+    return lastResult.getResponse().getContentType();
+  }
+
+  public JsonNode readJson(String json) throws Exception {
+    return objectMapper.readTree(json);
+  }
+
   public void rememberTenant(String ruc, UUID tenantId) {
     tenantIds.put(ruc, tenantId);
   }
