@@ -16,6 +16,10 @@ class AnonymousRequestMatcherTest {
     assertThat(matcher.matches(HttpMethod.POST, "/api/v1/auth/password")).isTrue();
     assertThat(matcher.matches(HttpMethod.POST, "/api/v1/tenants")).isTrue();
     assertThat(matcher.matches(HttpMethod.POST, "/api/v1/tenants/abc/verification")).isTrue();
+    assertThat(matcher.matches(HttpMethod.POST, "/api/v1/public/demo-requests")).isTrue();
+
+    assertThat(matcher.matches(HttpMethod.GET, "/api/v1/public/demo-requests")).isFalse();
+    assertThat(matcher.matches(HttpMethod.GET, "/api/v1/platform/demo-requests")).isFalse();
 
     assertThat(matcher.matches(HttpMethod.GET, "/api/v1/auth/sign-in")).isFalse();
     assertThat(matcher.matches(HttpMethod.GET, "/api/v1/tenants/abc")).isFalse();

@@ -124,6 +124,35 @@ class GatewayPlatformSecurityIntegrationTest extends AbstractGatewayIntegrationT
   }
 
   @Test
+  void routesPlatformDemoRequestsToIamOnlyForTheOwner() {
+    IAM.stubFor(
+        get("/api/v1/platform/demo-requests")
+            .willReturn(okJson("{\"items\":[],\"total\":0}")));
+    webTestClient
+        .get()
+        .uri("/api/v1/platform/demo-requests")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized();
+    webTestClient
+        .get()
+        .uri("/api/v1/platform/demo-requests")
+        .headers(h -> h.setBearerAuth(validToken()))
+        .exchange()
+        .expectStatus()
+        .isForbidden();
+    webTestClient
+        .get()
+        .uri("/api/v1/platform/demo-requests")
+        .headers(h -> h.setBearerAuth(owner()))
+        .exchange()
+        .expectStatus()
+        .isOk();
+    IAM.verify(1, getRequestedFor(urlEqualTo("/api/v1/platform/demo-requests")));
+    MONOLITH.verify(0, anyRequestedFor(anyUrl()));
+  }
+
+  @Test
   void platformSignInIsPublicButNotItsOtherRoutes() {
     IAM.stubFor(post("/api/v1/platform/auth/sign-in").willReturn(okJson("{}")));
     webTestClient.post().uri("/api/v1/platform/auth/sign-in").exchange().expectStatus().isOk();

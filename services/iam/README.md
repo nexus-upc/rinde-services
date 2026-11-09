@@ -52,7 +52,7 @@ CREATE DATABASE rinde_iam;
 CREATE DATABASE rinde_iam_test;
 ```
 
-Al arrancar, Flyway crea el esquema `iam` y aplica las migraciones de `src/main/resources/db/migration/iam`: V1 con empresas, usuarios y tokens de acceso; V2 con los recibos de eventos de suscripción; V3 con la cuenta del dueño, la suspensión administrativa y la auditoría de plataforma; y V4 con `iam.demo_mail_messages`.
+Al arrancar, Flyway crea el esquema `iam` y aplica las migraciones de `src/main/resources/db/migration/iam`: V1 con empresas, usuarios y tokens de acceso; V2 con los recibos de eventos de suscripción; V3 con la cuenta del dueño, la suspensión administrativa y la auditoría de plataforma; V4 con `iam.demo_mail_messages`; y V5 con `iam.demo_requests`, las solicitudes de demostración de la landing.
 
 ## Ejecución
 
@@ -85,6 +85,7 @@ Endpoints públicos. Los de acceso y registro no llevan JWT; el resto requiere `
 | GET | `/api/v1/users` | Listado de usuarios de la empresa (US11). Con `?role=DRIVER` también lo usa el responsable de operaciones, que solo ve cuentas DRIVER de su empresa; sin `role` o con otro rol responde 403. Un rol inexistente responde 400. |
 | POST | `/api/v1/users` | Invitación de usuario (US11). |
 | PATCH | `/api/v1/users/{id}` | Cambio de rol o de estado de un usuario (US11). |
+| POST | `/api/v1/public/demo-requests` | Solicitud de demostración desde la landing (US06). Sin token. Responde 201 con `{id, status: "RECEIVED", receivedAt}`. Si el mismo correo envió una solicitud en los últimos 10 minutos, responde 429 y no registra otra. |
 
 Endpoints de plataforma. Requieren un token de plataforma con `ROLE_PLATFORM_OWNER`, salvo el inicio de sesión. Un token de empresa no los usa, y un token de plataforma no sirve en los endpoints de empresa.
 
@@ -98,6 +99,7 @@ Endpoints de plataforma. Requieren un token de plataforma con `ROLE_PLATFORM_OWN
 | GET | `/api/v1/platform/audit/identity` | Auditoría de los cambios de acceso, solo lectura. |
 | GET | `/api/v1/platform/demo-mailbox/messages` | Mensajes del buzón de demostración, con búsqueda, filtro por tipo y paginación. Solo con el buzón habilitado. |
 | GET | `/api/v1/platform/demo-mailbox/messages/{id}` | Detalle de un mensaje y, si el enlace sigue vigente, su acción. |
+| GET | `/api/v1/platform/demo-requests` | Solicitudes de demostración de la landing, de la más reciente a la más antigua, con paginación (US06). |
 
 `GET /api/v1/demo/features` es público y solo informa si el buzón está habilitado.
 
