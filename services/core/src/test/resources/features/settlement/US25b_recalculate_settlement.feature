@@ -27,6 +27,12 @@ Característica: US25 Recalcular totales de la liquidación
     Cuando el administrador recalcula la liquidación "liq"
     Entonces la respuesta tiene código 409
 
+  Escenario: El recálculo advierte los gastos que aún no se revisan
+    Y que el conductor registró un gasto "pendiente" de tipo "TOLL" por el monto "20.00" con clave "KEY-RECALCULO-2026" en el viaje "viaje"
+    Cuando el administrador recalcula la liquidación "liq"
+    Entonces la respuesta tiene código 200
+    Y la respuesta incluye el campo "pendingExpenseCount" con el valor "1"
+
   Escenario: Recalcular liquidación inexistente devuelve 404
     Cuando el administrador recalcula una liquidación con id inexistente
     Entonces la respuesta tiene código 404

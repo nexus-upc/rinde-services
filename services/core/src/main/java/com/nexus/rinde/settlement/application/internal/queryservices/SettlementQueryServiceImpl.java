@@ -1,29 +1,40 @@
 package com.nexus.rinde.settlement.application.internal.queryservices;
 
 import com.nexus.rinde.settlement.application.internal.outboundservices.acl.ExternalExpenseService;
+import com.nexus.rinde.settlement.application.internal.outboundservices.acl.ExternalTripService;
 import com.nexus.rinde.settlement.domain.model.aggregates.Settlement;
+import com.nexus.rinde.settlement.domain.model.aggregates.TripAdvance;
 import com.nexus.rinde.settlement.domain.model.queries.ExportSettlementQuery;
 import com.nexus.rinde.settlement.domain.model.queries.GetSettlementByIdQuery;
 import com.nexus.rinde.settlement.domain.model.queries.GetSettlementByTripIdQuery;
+import com.nexus.rinde.settlement.domain.model.queries.GetTripAdvancesQuery;
 import com.nexus.rinde.settlement.domain.model.queries.SettlementExport;
 import com.nexus.rinde.settlement.domain.model.valueobjects.ApprovedExpense;
 import com.nexus.rinde.settlement.domain.services.SettlementQueryService;
 import com.nexus.rinde.settlement.infrastructure.persistence.jpa.repositories.SettlementRepository;
+import com.nexus.rinde.settlement.infrastructure.persistence.jpa.repositories.TripAdvanceRepository;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Atiende consultas sobre las liquidaciones registradas. */
+/** Atiende consultas sobre las liquidaciones y los adelantos registrados. */
 @Service
 public class SettlementQueryServiceImpl implements SettlementQueryService {
 
   private final SettlementRepository settlementRepository;
+  private final TripAdvanceRepository tripAdvanceRepository;
+  private final ExternalTripService externalTripService;
   private final ExternalExpenseService externalExpenseService;
 
   public SettlementQueryServiceImpl(
-      SettlementRepository settlementRepository, ExternalExpenseService externalExpenseService) {
+      SettlementRepository settlementRepository,
+      TripAdvanceRepository tripAdvanceRepository,
+      ExternalTripService externalTripService,
+      ExternalExpenseService externalExpenseService) {
     this.settlementRepository = settlementRepository;
+    this.tripAdvanceRepository = tripAdvanceRepository;
+    this.externalTripService = externalTripService;
     this.externalExpenseService = externalExpenseService;
   }
 
@@ -54,5 +65,15 @@ public class SettlementQueryServiceImpl implements SettlementQueryService {
         externalExpenseService.findApprovedExpensesByTripId(
             query.tenantId(), settlement.getTripId());
     return new SettlementExport(settlement, approved);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<TripAdvance> handle(GetTripAdvancesQuery query) {
+    externalTripService
+        .findStatusByTripId(query.tenantId(), query.tripId())
+        .orElseThrow(() -> new ResourceNotFoundException("El viaje no existe."));
+    return tripAdvanceRepository.findByTenantIdAndTripIdOrderByCreatedAtAsc(
+        query.tenantId(), query.tripId());
   }
 }

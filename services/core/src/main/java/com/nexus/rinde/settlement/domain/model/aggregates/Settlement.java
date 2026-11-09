@@ -83,14 +83,14 @@ public class Settlement extends AuditableAbstractAggregateRoot {
     return s;
   }
 
-  /** Registra el anticipo entregado al conductor para el viaje. */
-  public void registerAdvance(BigDecimal amount, String currency, Instant now) {
+  /** Incorpora el total de los adelantos registrados antes de la salida del viaje. */
+  public void incorporateAdvance(BigDecimal total, String currency) {
     ensureOpen();
-    if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-      throw new BusinessRuleException("El monto del anticipo debe ser mayor a cero.");
+    if (total == null || total.signum() <= 0) {
+      return;
     }
-    this.advanceAmount = amount;
-    this.advanceCurrency = (currency != null && !currency.isBlank()) ? currency.trim().toUpperCase() : "PEN";
+    this.advanceAmount = total;
+    this.advanceCurrency = currency;
   }
 
   /** Recalcula el total de gastos aprobados y el balance del anticipo. */
@@ -109,7 +109,13 @@ public class Settlement extends AuditableAbstractAggregateRoot {
   }
 
   /** Cierra la liquidación sumando los gastos aprobados y publica SettlementClosed. */
-  public void close(List<ApprovedExpense> approvedExpenses, UUID closedBy, Instant now) {
+  public void close(
+      List<ApprovedExpense> approvedExpenses, int pendingExpenses, UUID closedBy, Instant now) {
+    ensureOpen();
+    if (pendingExpenses > 0) {
+      throw new ConflictException(
+          "No se puede cerrar la liquidación mientras haya gastos sin revisar. Apruébelos u obsérvelos primero.");
+    }
     recalculate(approvedExpenses);
     this.status = SettlementStatus.CLOSED;
     this.closedBy = closedBy;
