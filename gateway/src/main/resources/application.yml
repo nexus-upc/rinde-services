@@ -68,6 +68,11 @@ spring:
                 - Path=/v3/api-docs/expense
               filters:
                 - RewritePath=/v3/api-docs/expense,/v3/api-docs
+            - id: incident-service
+              uri: ${INCIDENT_SERVICE_URL:http://localhost:8085}
+              order: 6
+              predicates:
+                - Path=/api/v1/trips/*/incidents,/api/v1/trips/*/incidents/**,/api/v1/incidents,/api/v1/incidents/**
             - id: trip-service
               uri: ${TRIP_SERVICE_URL:http://localhost:8082}
               order: 8
@@ -97,6 +102,13 @@ spring:
               order: 12
               predicates:
                 - Path=/api/v1/**
+            - id: incident-api-docs
+              uri: ${INCIDENT_SERVICE_URL:http://localhost:8085}
+              order: 13
+              predicates:
+                - Path=/v3/api-docs/incident
+              filters:
+                - RewritePath=/v3/api-docs/incident,/v3/api-docs
           globalcors:
             cors-configurations:
               '[/**]':
@@ -139,6 +151,8 @@ springdoc:
         url: /v3/api-docs/fleet
       - name: Gastos
         url: /v3/api-docs/expense
+      - name: Incidentes
+        url: /v3/api-docs/incident
       - name: core
         url: /v3/api-docs/core
 

@@ -32,6 +32,7 @@ abstract class AbstractGatewayIntegrationTest {
   static final WireMockServer TRIP = new WireMockServer(wireMockConfig().dynamicPort());
   static final WireMockServer FLEET = new WireMockServer(wireMockConfig().dynamicPort());
   static final WireMockServer EXPENSE = new WireMockServer(wireMockConfig().dynamicPort());
+  static final WireMockServer INCIDENT = new WireMockServer(wireMockConfig().dynamicPort());
 
   static {
     IAM.start();
@@ -39,6 +40,7 @@ abstract class AbstractGatewayIntegrationTest {
     TRIP.start();
     FLEET.start();
     EXPENSE.start();
+    INCIDENT.start();
   }
 
   @Autowired WebTestClient webTestClient;
@@ -50,6 +52,7 @@ abstract class AbstractGatewayIntegrationTest {
     registry.add("TRIP_SERVICE_URL", () -> "http://localhost:" + TRIP.port());
     registry.add("FLEET_SERVICE_URL", () -> "http://localhost:" + FLEET.port());
     registry.add("EXPENSE_SERVICE_URL", () -> "http://localhost:" + EXPENSE.port());
+    registry.add("INCIDENT_SERVICE_URL", () -> "http://localhost:" + INCIDENT.port());
     registry.add("JWT_SECRET", () -> TEST_SECRET);
     registry.add("CORS_ALLOWED_ORIGINS", () -> ALLOWED_ORIGIN);
   }
@@ -61,6 +64,7 @@ abstract class AbstractGatewayIntegrationTest {
     TRIP.resetAll();
     FLEET.resetAll();
     EXPENSE.resetAll();
+    INCIDENT.resetAll();
   }
 
   static String validToken() {
