@@ -31,6 +31,7 @@ public class FleetStub {
   private final Set<UUID> vehicles = new HashSet<>();
   private final Set<UUID> drivers = new HashSet<>();
   private final Map<UUID, UUID> driverByUser = new HashMap<>();
+  private final Set<UUID> restrictedTenants = new HashSet<>();
   private MaintenanceState maintenance = MaintenanceState.UP_TO_DATE;
   private boolean driverEnabled = true;
   private boolean strict;
@@ -44,6 +45,7 @@ public class FleetStub {
     vehicles.clear();
     drivers.clear();
     driverByUser.clear();
+    restrictedTenants.clear();
     maintenance = MaintenanceState.UP_TO_DATE;
     driverEnabled = true;
     strict = false;
@@ -93,6 +95,12 @@ public class FleetStub {
     apply();
   }
 
+  /** IAM informa a la empresa como restringida por su suscripción vencida. */
+  public synchronized void restrictTenant(UUID tenantId) {
+    restrictedTenants.add(tenantId);
+    apply();
+  }
+
   private void apply() {
     server.resetMappings();
     String health =
@@ -126,6 +134,12 @@ public class FleetStub {
     }
     server.stubFor(
         get(urlPathMatching(TENANT_STATUS_PATH)).willReturn(okJson("{\"status\":\"ACTIVE\"}")));
+    for (UUID tenantId : restrictedTenants) {
+      stub(
+          "/api/internal/v1/tenants/" + tenantId + "/status",
+          1,
+          okJson("{\"status\":\"RESTRICTED\"}"));
+    }
   }
 
   private void stub(String pathPattern, int priority, ResponseDefinitionBuilder response) {

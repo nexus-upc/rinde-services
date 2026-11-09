@@ -37,6 +37,12 @@ Característica: US21 Registrar un gasto con su evidencia desde el móvil
     Entonces la respuesta tiene código 409
     Y el mensaje de error es "La clave de idempotencia ya fue utilizada."
 
+  Escenario: Registrar un gasto aunque la suscripción de la empresa esté restringida
+    Dado que la suscripción de la empresa con RUC "20123456789" está restringida
+    Cuando el conductor registra un gasto de tipo "FUEL" por el monto "95.00" en fecha "HOY+5" con evidencia "https://storage.rinde.pe/evidences/recibo2.jpg" y clave "KEY-EXP-RESTRINGIDA" en el viaje "viaje"
+    Entonces la respuesta tiene código 201
+    Y la respuesta incluye el campo "status" con el valor "REGISTERED"
+
   Escenario: Obtener enlace firmado para subida directa de comprobante
     Cuando el conductor solicita un enlace firmado para subir su comprobante
     Entonces la respuesta tiene código 200
