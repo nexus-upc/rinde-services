@@ -7,13 +7,17 @@ import com.nexus.rinde.dashboard.domain.services.DashboardQueryService;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.OperationalMetricsResource;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.TripSummaryResource;
+import com.nexus.rinde.shared.domain.exceptions.BusinessRuleException;
 import com.nexus.rinde.shared.infrastructure.security.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -22,6 +26,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Endpoints del dashboard operativo para administradores y operadores. */
@@ -94,12 +99,45 @@ public class DashboardController {
   @Operation(
       summary = "Métricas operativas consolidadas (US37)",
       description =
-          "Devuelve conteos de viajes por estado y gastos por estado de auditoría"
-              + " para el panel de métricas de la empresa.")
-  @ApiResponse(responseCode = "200", description = "Métricas operativas")
-  public ResponseEntity<OperationalMetricsResource> getMetrics() {
+          "Devuelve los viajes por estado, el gasto aprobado del periodo, las liquidaciones"
+              + " pendientes de cierre y las incidencias abiertas. El periodo se indica con from y"
+              + " to (AAAA-MM-DD); sin fechas, va desde el día 1 del mes hasta hoy. Si el servicio"
+              + " de incidencias no responde, la respuesta llega con partial en true y la fuente"
+              + " de incidencias en UNAVAILABLE.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Métricas operativas"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Fecha con formato inválido o periodo con fin anterior al inicio",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public ResponseEntity<OperationalMetricsResource> getMetrics(
+      @Parameter(description = "Primer día del periodo, en formato AAAA-MM-DD.", example = "2026-11-01")
+          @RequestParam(name = "from", required = false)
+          String from,
+      @Parameter(description = "Último día del periodo, en formato AAAA-MM-DD.", example = "2026-11-30")
+          @RequestParam(name = "to", required = false)
+          String to) {
     OperationalMetricsResource metrics =
-        dashboardQueryService.handle(new GetOperationalMetricsQuery(TenantContext.tenantId()));
+        dashboardQueryService.handle(
+            new GetOperationalMetricsQuery(
+                TenantContext.tenantId(),
+                parseDate(from, "La fecha de inicio"),
+                parseDate(to, "La fecha de fin")));
     return ResponseEntity.ok(metrics);
+  }
+
+  private static LocalDate parseDate(String value, String label) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    try {
+      return LocalDate.parse(value.trim());
+    } catch (DateTimeParseException ex) {
+      throw new BusinessRuleException(label + " debe tener el formato AAAA-MM-DD.");
+    }
   }
 }

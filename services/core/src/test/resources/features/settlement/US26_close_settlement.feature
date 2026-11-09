@@ -35,9 +35,19 @@ Característica: US26 Cerrar la liquidación de un viaje
     Y que el conductor registró un gasto "propio" de tipo "FUEL" por el monto "50.00" con clave "KEY-PROPIO-2026" en el viaje "viaje"
     Y que el administrador "ana@andes.pe" aprobó el gasto "propio"
     Y que el conductor registró un gasto "pendiente" de tipo "TOLL" por el monto "20.00" con clave "KEY-PENDIENTE-2026" en el viaje "viaje"
+    Y que el administrador "ana@andes.pe" observó el gasto "pendiente"
     Cuando el administrador cierra la liquidación "liq"
     Entonces la respuesta tiene código 200
     Y la respuesta incluye el campo "expenseTotalAmount" con el valor "50.0"
+
+  Escenario: No se cierra la liquidación mientras haya gastos sin revisar
+    Y que el conductor registró un gasto "sin revisar" de tipo "TOLL" por el monto "20.00" con clave "KEY-SIN-REVISAR-2026" en el viaje "viaje"
+    Cuando el administrador cierra la liquidación "liq"
+    Entonces la respuesta tiene código 409
+    Y el mensaje de error contiene "gastos sin revisar"
+    Cuando el administrador consulta la liquidación "liq"
+    Entonces la respuesta tiene código 200
+    Y la respuesta incluye el campo "status" con el valor "OPEN"
 
   Escenario: El conductor no puede cerrar liquidaciones
     Cuando el conductor "luis@andes.pe" intenta cerrar la liquidación "liq"

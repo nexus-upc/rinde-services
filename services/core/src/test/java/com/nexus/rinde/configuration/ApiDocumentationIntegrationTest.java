@@ -24,7 +24,8 @@ class ApiDocumentationIntegrationTest extends AbstractIntegrationTest {
     mockMvc
         .perform(get("/v3/api-docs"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.paths", hasKey("/api/v1/settlements/advances")))
+        .andExpect(jsonPath("$.paths", hasKey("/api/v1/trips/{tripId}/advances")))
+        .andExpect(jsonPath("$.paths", not(hasKey("/api/v1/settlements/advances"))))
         .andExpect(jsonPath("$.paths", hasKey("/api/v1/settlements/{id}/close")))
         .andExpect(jsonPath("$.paths", hasKey("/api/v1/trips/{tripId}/settlement")))
         .andExpect(jsonPath("$.paths", hasKey("/api/v1/dashboard/fleet-status")))

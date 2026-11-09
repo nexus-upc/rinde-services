@@ -13,7 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-/** Cliente de pruebas para los endpoints de Settlement. */
+/** Cliente de pruebas para los endpoints de Settlement y de adelantos. */
 public class SettlementApi {
 
   private final MockMvc mockMvc;
@@ -24,15 +24,20 @@ public class SettlementApi {
     this.objectMapper = objectMapper;
   }
 
-  public ResultActions registerAdvance(String token, String tripId, BigDecimal amount, String currency)
+  public ResultActions registerAdvance(
+      String token, String tripId, BigDecimal amount, String currency, String deliveryMethod)
       throws Exception {
     Map<String, Object> body = new LinkedHashMap<>();
-    body.put("tripId", tripId);
     body.put("amount", amount);
     if (currency != null) {
       body.put("currency", currency);
     }
-    return perform(post("/api/v1/settlements/advances"), token, body);
+    body.put("deliveryMethod", deliveryMethod);
+    return perform(post("/api/v1/trips/" + tripId + "/advances"), token, body);
+  }
+
+  public ResultActions listAdvances(String token, String tripId) throws Exception {
+    return mockMvc.perform(authorized(get("/api/v1/trips/" + tripId + "/advances"), token));
   }
 
   public ResultActions getById(String token, String settlementId) throws Exception {

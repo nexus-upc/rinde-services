@@ -36,39 +36,57 @@ public class SettlementSteps {
     }
   }
 
-  @Cuando("el administrador registra un anticipo de {string} soles para el viaje {string}")
-  public void adminRegistersAdvance(String amount, String tripName) throws Exception {
-    String tripId = context.tripIdOf(tripName);
-    String token = context.currentAdministratorToken();
-    context.record(api.registerAdvance(token, tripId, new BigDecimal(amount), "PEN"));
-  }
-
-  @Cuando("el administrador intenta registrar un anticipo de {string} soles para el viaje {string}")
-  public void adminTriesToRegisterAdvance(String amount, String tripName) throws Exception {
-    String tripId = context.tripIdOf(tripName);
-    String token = context.currentAdministratorToken();
-    context.record(api.registerAdvance(token, tripId, new BigDecimal(amount), "PEN"));
-  }
-
-  @Cuando("el administrador intenta registrar un anticipo para un viaje inexistente")
-  public void adminRegistersAdvanceForUnknownTrip() throws Exception {
-    String token = context.currentAdministratorToken();
-    context.record(
-        api.registerAdvance(token, UUID.randomUUID().toString(), new BigDecimal("100.00"), "PEN"));
-  }
-
-  @Cuando("el conductor {string} intenta registrar un anticipo de {string} soles para el viaje {string}")
-  public void driverTriesToRegisterAdvance(String email, String amount, String tripName)
+  @Cuando(
+      "el administrador registra un adelanto de {string} soles por {string} para el viaje {string}")
+  public void adminRegistersAdvance(String amount, String deliveryMethod, String tripName)
       throws Exception {
     String tripId = context.tripIdOf(tripName);
-    String token = context.accessTokenOf(email);
-    context.record(api.registerAdvance(token, tripId, new BigDecimal(amount), "PEN"));
+    String token = context.currentAdministratorToken();
+    context.record(
+        api.registerAdvance(token, tripId, new BigDecimal(amount), "PEN", deliveryMethod));
   }
 
-  @Cuando("una persona sin token intenta registrar un anticipo para el viaje {string}")
-  public void unauthenticatedTriesToRegisterAdvance(String tripName) throws Exception {
+  @Cuando(
+      "el administrador registra un adelanto de {string} soles por {string} para un viaje inexistente")
+  public void adminRegistersAdvanceForUnknownTrip(String amount, String deliveryMethod)
+      throws Exception {
+    String token = context.currentAdministratorToken();
+    context.record(
+        api.registerAdvance(
+            token, UUID.randomUUID().toString(), new BigDecimal(amount), "PEN", deliveryMethod));
+  }
+
+  @Cuando(
+      "el conductor {string} registra un adelanto de {string} soles por {string} para el viaje {string}")
+  public void driverRegistersAdvance(
+      String email, String amount, String deliveryMethod, String tripName) throws Exception {
     String tripId = context.tripIdOf(tripName);
-    context.record(api.registerAdvance(null, tripId, new BigDecimal("100.00"), "PEN"));
+    String token = context.accessTokenOf(email);
+    context.record(
+        api.registerAdvance(token, tripId, new BigDecimal(amount), "PEN", deliveryMethod));
+  }
+
+  @Cuando(
+      "una persona sin token registra un adelanto de {string} soles por {string} para el viaje {string}")
+  public void unauthenticatedRegistersAdvance(String amount, String deliveryMethod, String tripName)
+      throws Exception {
+    String tripId = context.tripIdOf(tripName);
+    context.record(
+        api.registerAdvance(null, tripId, new BigDecimal(amount), "PEN", deliveryMethod));
+  }
+
+  @Cuando("el administrador consulta los adelantos del viaje {string}")
+  public void adminListsAdvances(String tripName) throws Exception {
+    String tripId = context.tripIdOf(tripName);
+    String token = context.currentAdministratorToken();
+    context.record(api.listAdvances(token, tripId));
+  }
+
+  @Cuando("el conductor {string} consulta los adelantos del viaje {string}")
+  public void driverListsAdvances(String email, String tripName) throws Exception {
+    String tripId = context.tripIdOf(tripName);
+    String token = context.accessTokenOf(email);
+    context.record(api.listAdvances(token, tripId));
   }
 
   @Cuando("el administrador consulta la liquidación {string}")

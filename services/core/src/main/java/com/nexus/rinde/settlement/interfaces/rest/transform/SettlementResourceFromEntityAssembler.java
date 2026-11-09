@@ -9,6 +9,11 @@ public class SettlementResourceFromEntityAssembler {
   private SettlementResourceFromEntityAssembler() {}
 
   public static SettlementResource toResource(Settlement settlement) {
+    return toResource(settlement, null);
+  }
+
+  /** Incluye la cantidad de gastos sin revisar cuando la respuesta viene de un recálculo. */
+  public static SettlementResource toResource(Settlement settlement, Integer pendingExpenseCount) {
     return new SettlementResource(
         settlement.getId(),
         settlement.getTenantId(),
@@ -21,6 +26,7 @@ public class SettlementResourceFromEntityAssembler {
         settlement.getExpenseTotalCurrency(),
         settlement.getAdvanceBalance(),
         settlement.getCreatedAt(),
-        settlement.getUpdatedAt());
+        settlement.getUpdatedAt(),
+        pendingExpenseCount);
   }
 }

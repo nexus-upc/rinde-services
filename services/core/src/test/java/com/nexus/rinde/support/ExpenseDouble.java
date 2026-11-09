@@ -37,6 +37,11 @@ public class ExpenseDouble implements ExpenseContextFacade {
   }
 
   public void approveExpense(UUID expenseId) {
+    changeStatus(expenseId, "APPROVED");
+  }
+
+  /** Cambia el estado de auditoría del gasto, como lo haría Expense al revisarlo. */
+  public void changeStatus(UUID expenseId, String status) {
     expenses
         .values()
         .forEach(
@@ -52,7 +57,7 @@ public class ExpenseDouble implements ExpenseContextFacade {
                                 expense.summary().amount(),
                                 expense.summary().currency(),
                                 expense.summary().expenseDate(),
-                                "APPROVED"))));
+                                status))));
   }
 
   @Override
