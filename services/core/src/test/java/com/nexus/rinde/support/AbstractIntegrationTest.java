@@ -21,6 +21,7 @@ public abstract class AbstractIntegrationTest {
   @Autowired protected CapturedEvents capturedEvents;
   @Autowired protected ContextDoubles contextDoubles;
   @Autowired protected ExpenseDouble expenseDouble;
+  @Autowired protected IncidentDouble incidentDouble;
   @Autowired protected TestTokens tokens;
   @Autowired protected MockMvc mockMvc;
   @Autowired protected ObjectMapper objectMapper;
@@ -34,6 +35,7 @@ public abstract class AbstractIntegrationTest {
     registry.add("rinde.trip.remote-enabled", () -> false);
     registry.add("rinde.fleet.remote-enabled", () -> false);
     registry.add("rinde.expense.remote-enabled", () -> false);
+    registry.add("rinde.incident.remote-enabled", () -> false);
     registry.add("rinde.messaging.notification.queue", () -> NOTIFICATION_QUEUE);
     registry.add("rinde.messaging.exchange", () -> NOTIFICATION_QUEUE + ".events");
     registry.add("rinde.messaging.subscription.queue", () -> NOTIFICATION_QUEUE + ".subscriptions");
@@ -46,6 +48,7 @@ public abstract class AbstractIntegrationTest {
     capturedEvents.clear();
     contextDoubles.reset();
     expenseDouble.reset();
+    incidentDouble.reset();
     api = new TenantAccess(contextDoubles, tokens);
   }
 }

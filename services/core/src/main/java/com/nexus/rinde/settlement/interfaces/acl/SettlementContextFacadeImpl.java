@@ -1,6 +1,7 @@
 package com.nexus.rinde.settlement.interfaces.acl;
 
 import com.nexus.rinde.settlement.domain.model.aggregates.Settlement;
+import com.nexus.rinde.settlement.domain.model.valueobjects.SettlementStatus;
 import com.nexus.rinde.settlement.infrastructure.persistence.jpa.repositories.SettlementRepository;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,11 @@ public class SettlementContextFacadeImpl implements SettlementContextFacade {
     return settlementRepository
         .findByTripIdAndTenantId(tripId, tenantId)
         .map(SettlementContextFacadeImpl::toSummary);
+  }
+
+  @Override
+  public long countOpenByTenantId(UUID tenantId) {
+    return settlementRepository.countByTenantIdAndStatus(tenantId, SettlementStatus.OPEN);
   }
 
   private static SettlementSummary toSummary(Settlement settlement) {

@@ -81,6 +81,9 @@ rinde:
   fleet:
     remote-enabled: ${RINDE_FLEET_REMOTE_ENABLED:true}
     base-url: ${FLEET_SERVICE_URL:http://localhost:8083}
+  incident:
+    remote-enabled: ${RINDE_INCIDENT_REMOTE_ENABLED:true}
+    base-url: ${INCIDENT_SERVICE_URL:http://localhost:8085}
   notification:
     retry:
       # Esperas en minutos antes de cada reintento; tras la quinta falla el aviso queda FAILED.

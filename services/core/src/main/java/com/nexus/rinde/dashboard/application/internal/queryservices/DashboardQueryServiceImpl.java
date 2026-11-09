@@ -9,19 +9,27 @@ import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource.D
 import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource.VehicleSummary;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.OperationalMetricsResource;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.TripSummaryResource;
+import com.nexus.rinde.configuration.remote.RemoteServiceUnavailableException;
 import com.nexus.rinde.expense.interfaces.acl.ExpenseContextFacade;
 import com.nexus.rinde.expense.interfaces.acl.ExpenseSummary;
 import com.nexus.rinde.fleet.interfaces.acl.FleetContextFacade;
 import com.nexus.rinde.fleet.interfaces.acl.FleetDriverSummary;
 import com.nexus.rinde.fleet.interfaces.acl.FleetVehicleSummary;
+import com.nexus.rinde.incident.interfaces.acl.IncidentContextFacade;
 import com.nexus.rinde.settlement.interfaces.acl.SettlementSummary;
 import com.nexus.rinde.settlement.interfaces.acl.SettlementContextFacade;
+import com.nexus.rinde.shared.domain.exceptions.BusinessRuleException;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import com.nexus.rinde.trip.interfaces.acl.TripContextFacade;
 import com.nexus.rinde.trip.interfaces.acl.TripSummary;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,16 +41,22 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
   private final SettlementContextFacade settlementFacade;
   private final ExpenseContextFacade expenseFacade;
   private final FleetContextFacade fleetFacade;
+  private final IncidentContextFacade incidentFacade;
+  private final Clock clock;
 
   public DashboardQueryServiceImpl(
       TripContextFacade tripFacade,
       SettlementContextFacade settlementFacade,
       ExpenseContextFacade expenseFacade,
-      FleetContextFacade fleetFacade) {
+      FleetContextFacade fleetFacade,
+      IncidentContextFacade incidentFacade,
+      Clock clock) {
     this.tripFacade = tripFacade;
     this.settlementFacade = settlementFacade;
     this.expenseFacade = expenseFacade;
     this.fleetFacade = fleetFacade;
+    this.incidentFacade = incidentFacade;
+    this.clock = clock;
   }
 
   @Override
@@ -149,6 +163,11 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
   @Transactional(readOnly = true)
   public OperationalMetricsResource handle(GetOperationalMetricsQuery query) {
     UUID tenantId = query.tenantId();
+    LocalDate to = query.to() != null ? query.to() : LocalDate.now(clock);
+    LocalDate from = query.from() != null ? query.from() : to.withDayOfMonth(1);
+    if (to.isBefore(from)) {
+      throw new BusinessRuleException("La fecha final no puede ser anterior a la inicial.");
+    }
 
     List<TripSummary> trips = tripFacade.findByTenantId(tenantId);
     List<ExpenseSummary> expenses = expenseFacade.findByTenantId(tenantId);
@@ -170,7 +189,22 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
                 .count();
     int observed = (int) expenses.stream().filter(e -> "OBSERVED".equals(e.status())).count();
 
+    Map<String, BigDecimal> approvedTotals =
+        expenses.stream()
+            .filter(e -> "APPROVED".equals(e.status()))
+            .filter(e -> e.expenseDate() != null)
+            .filter(e -> !e.expenseDate().isBefore(from) && !e.expenseDate().isAfter(to))
+            .collect(
+                Collectors.groupingBy(
+                    e -> e.currency() != null ? e.currency() : "PEN",
+                    TreeMap::new,
+                    Collectors.reducing(BigDecimal.ZERO, ExpenseSummary::amount, BigDecimal::add)));
+
+    int pendingSettlements = (int) settlementFacade.countOpenByTenantId(tenantId);
+    OperationalMetricsResource.Incidents incidents = countOpenIncidents(tenantId);
+
     return new OperationalMetricsResource(
+        new OperationalMetricsResource.Period(from, to),
         trips.size(),
         scheduled,
         assigned,
@@ -180,6 +214,23 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
         expenses.size(),
         approved,
         pending,
-        observed);
+        observed,
+        approvedTotals,
+        pendingSettlements,
+        incidents,
+        "UNAVAILABLE".equals(incidents.source()));
+  }
+
+  /**
+   * Si Incident no responde, el resto de la consulta sigue disponible: la cifra queda vacía y la
+   * fuente, marcada como no disponible (DEC-28).
+   */
+  private OperationalMetricsResource.Incidents countOpenIncidents(UUID tenantId) {
+    try {
+      return new OperationalMetricsResource.Incidents(
+          incidentFacade.countOpenByTenantId(tenantId), "AVAILABLE");
+    } catch (RemoteServiceUnavailableException ex) {
+      return new OperationalMetricsResource.Incidents(null, "UNAVAILABLE");
+    }
   }
 }

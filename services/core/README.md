@@ -25,8 +25,13 @@ Core consulta los otros contextos a través de sus fachadas. Con la propiedad re
 | Trip | `RINDE_TRIP_REMOTE_ENABLED` | `TRIP_SERVICE_URL`, 8082 | Viajes para Dashboard. |
 | Fleet | `RINDE_FLEET_REMOTE_ENABLED` | `FLEET_SERVICE_URL`, 8083 | Conteo de unidades para Subscriptions y listados para Dashboard. |
 | Expense | `RINDE_EXPENSE_REMOTE_ENABLED` | `EXPENSE_SERVICE_URL`, 8084 | Gastos aprobados para Settlement y gastos para Dashboard. |
+| Incident | `RINDE_INCIDENT_REMOTE_ENABLED` | `INCIDENT_SERVICE_URL`, 8085 | Incidencias abiertas para Dashboard (`GET /api/internal/v1/incidents/tenants/{tenantId}/open-count`). |
 
-Si un servicio no responde, la API informa 503. Las pruebas ponen estas propiedades en `false` y usan dobles en memoria (`support/ContextDoubles` y `support/ExpenseDouble`), de modo que no necesitan los otros servicios.
+Si un servicio no responde, la API informa 503. La excepción es Incident: el Dashboard entrega el resto de las métricas con `incidents.source` en `UNAVAILABLE` y `partial` en `true`. Las pruebas ponen estas propiedades en `false` y usan dobles en memoria (`support/ContextDoubles`, `support/ExpenseDouble` e `support/IncidentDouble`), de modo que no necesitan los otros servicios.
+
+## Adelantos y liquidación
+
+El responsable registra adelantos con `POST /api/v1/trips/{tripId}/advances` mientras el viaje esté programado o asignado. Cada adelanto guarda monto, moneda y medio de entrega (`CASH` o `TRANSFER`) en `settlement.trip_advances`. Al recibir `trip.finished`, la liquidación suma los adelantos del viaje. La liquidación no se cierra mientras haya gastos sin aprobar ni observar.
 
 ## Eventos
 

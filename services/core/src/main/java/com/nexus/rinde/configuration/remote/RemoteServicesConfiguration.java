@@ -7,9 +7,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
-/** Clientes hacia Trip, Fleet y Expense separados, con los mismos tiempos de espera que IAM. */
+/** Clientes hacia Trip, Fleet, Expense e Incident separados, con los mismos tiempos de espera. */
 @Configuration
 public class RemoteServicesConfiguration {
+
+  @Bean
+  @ConditionalOnProperty(name = "rinde.incident.remote-enabled", havingValue = "true")
+  public RestClient incidentRestClient(
+      RestClient.Builder builder,
+      @Value("${rinde.incident.base-url:http://localhost:8085}") String baseUrl) {
+    return client(builder, baseUrl);
+  }
 
   @Bean
   @ConditionalOnProperty(name = "rinde.trip.remote-enabled", havingValue = "true")

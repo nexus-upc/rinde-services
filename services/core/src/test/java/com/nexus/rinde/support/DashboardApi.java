@@ -26,7 +26,19 @@ public class DashboardApi {
   }
 
   public ResultActions getMetrics(String token) throws Exception {
-    return mockMvc.perform(authorized(get("/api/v1/dashboard/metrics"), token));
+    return getMetrics(token, null, null);
+  }
+
+  /** Consulta las métricas; las fechas nulas se omiten y toma el valor por defecto. */
+  public ResultActions getMetrics(String token, String from, String to) throws Exception {
+    MockHttpServletRequestBuilder request = get("/api/v1/dashboard/metrics");
+    if (from != null) {
+      request.param("from", from);
+    }
+    if (to != null) {
+      request.param("to", to);
+    }
+    return mockMvc.perform(authorized(request, token));
   }
 
   private MockHttpServletRequestBuilder authorized(
