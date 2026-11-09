@@ -20,7 +20,7 @@ El gateway no tiene lógica de negocio. Los servicios vuelven a validar el token
 | `/v3/api-docs/trip` | Trip (`/v3/api-docs`) | `TRIP_SERVICE_URL` |
 | `/v3/api-docs/fleet` | Fleet (`/v3/api-docs`) | `FLEET_SERVICE_URL` |
 | `/v3/api-docs/expense` | Expense (`/v3/api-docs`) | `EXPENSE_SERVICE_URL` |
-| `/v3/api-docs/monolith` | Monolito (`/v3/api-docs`) | `MONOLITH_URL` |
+| `/v3/api-docs/core` | core (`/v3/api-docs`) | `MONOLITH_URL` |
 | `/swagger-ui.html` | Swagger UI con los documentos de todos los servicios | |
 | `/api/internal/**` | Ninguno. Responde 404 y nunca se reenvía | |
 | `/actuator/health` | Estado del propio gateway | |

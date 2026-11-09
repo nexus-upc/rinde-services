@@ -10,11 +10,14 @@ import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 import java.net.URI;
 
 import org.junit.jupiter.api.Test;
+import org.springdoc.core.properties.SwaggerUiConfigProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -25,6 +28,8 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
 
   private static final String INTERNAL_STATUS =
       "/api/internal/v1/tenants/00000000-0000-0000-0000-000000000000/status";
+
+  @Autowired private SwaggerUiConfigProperties swaggerUi;
 
   @Test
   void sendsSignInWithoutTokenToIamAndKeepsItsErrorBody() {
@@ -184,10 +189,20 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
         .expectBody()
         .jsonPath("$.openapi")
         .exists();
-    webTestClient.get().uri("/v3/api-docs/monolith").exchange().expectStatus().isOk();
+    webTestClient.get().uri("/v3/api-docs/core").exchange().expectStatus().isOk();
 
     IAM.verify(1, getRequestedFor(urlEqualTo("/v3/api-docs")));
     MONOLITH.verify(1, getRequestedFor(urlEqualTo("/v3/api-docs")));
+  }
+
+  @Test
+  void listsTheCoreDocumentsInSwaggerUnderTheirName() {
+    assertThat(swaggerUi.getUrls())
+        .anySatisfy(
+            url -> {
+              assertThat(url.getName()).isEqualTo("core");
+              assertThat(url.getUrl()).isEqualTo("/v3/api-docs/core");
+            });
   }
 
   @Test
