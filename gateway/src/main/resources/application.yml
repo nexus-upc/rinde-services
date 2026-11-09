@@ -50,12 +50,12 @@ spring:
               order: 4
               predicates:
                 - Path=/api/internal/**
-            # Settlement sigue en el monolito; va antes que el resto de /trips.
+            # Settlement y los adelantos siguen en el monolito; van antes que el resto de /trips.
             - id: monolith-trip-children
               uri: ${MONOLITH_URL:http://localhost:8080}
               order: 5
               predicates:
-                - Path=/api/v1/trips/*/settlement/**
+                - Path=/api/v1/trips/*/settlement/**,/api/v1/trips/*/advances,/api/v1/trips/*/advances/**
             - id: expense-service
               uri: ${EXPENSE_SERVICE_URL:http://localhost:8084}
               order: 6

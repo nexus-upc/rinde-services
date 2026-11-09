@@ -115,6 +115,43 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
   }
 
   @Test
+  void routesTripAdvancesToTheMonolithNextToTheSettlement() {
+    String token = validToken();
+    MONOLITH.stubFor(
+        get(urlEqualTo("/api/v1/trips/123/advances")).willReturn(okJson("[]")));
+    MONOLITH.stubFor(
+        post(urlEqualTo("/api/v1/trips/123/advances"))
+            .willReturn(
+                aResponse()
+                    .withStatus(201)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("{\"tripId\":\"123\"}")));
+
+    webTestClient
+        .get()
+        .uri("/api/v1/trips/123/advances")
+        .header(AUTHORIZATION, "Bearer " + token)
+        .exchange()
+        .expectStatus()
+        .isOk();
+    webTestClient
+        .post()
+        .uri("/api/v1/trips/123/advances")
+        .header(AUTHORIZATION, "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"amount\":500.00,\"deliveryMethod\":\"CASH\"}")
+        .exchange()
+        .expectStatus()
+        .isCreated();
+
+    MONOLITH.verify(
+        getRequestedFor(urlEqualTo("/api/v1/trips/123/advances"))
+            .withHeader(AUTHORIZATION, equalTo("Bearer " + token)));
+    MONOLITH.verify(postRequestedFor(urlEqualTo("/api/v1/trips/123/advances")));
+    TRIP.verify(0, anyRequestedFor(anyUrl()));
+  }
+
+  @Test
   void routesVehiclesDriversAndMaintenancesToFleetService() {
     String token = validToken();
     for (String path : new String[] {"/api/v1/vehicles", "/api/v1/drivers", "/api/v1/maintenances"}) {
