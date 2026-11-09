@@ -23,7 +23,9 @@ Requieren token de empresa. Las altas exigen ADMINISTRATOR u OPERATIONS_MANAGER.
 | GET | `/api/v1/vehicles/{id}` | Ficha de la unidad (US32). |
 | GET | `/api/v1/vehicles/{id}/health-status` | Estado de mantenimiento de la unidad (US15 y US34). |
 | POST | `/api/v1/vehicles/{id}/maintenances` | Registro de mantenimiento (US33). |
-| GET, POST | `/api/v1/drivers` | Listado y alta de conductores (US13). |
+| GET, POST | `/api/v1/drivers` | Listado y alta de conductores (US13). Si se indica `userId`, IAM debe confirmar que la cuenta es DRIVER de la empresa, que está `ACTIVE` y que no está vinculada a otro conductor (404, 400 o 409). |
+| PUT | `/api/v1/drivers/{id}/account` | Cambia la cuenta vinculada con `{"userId": "..."}` o la retira con `{"userId": null}` (US11 y US13). Aplica las mismas validaciones del alta. Volver a vincular la misma cuenta responde 200 sin cambios. Sin la clave `userId` responde 400. |
+| GET | `/api/v1/drivers/me` | Conductor vinculado a la cuenta del token (rol DRIVER). Responde 404 si la cuenta no tiene vínculo. |
 | GET | `/api/v1/drivers/{id}` y `/{id}/eligibility` | Detalle y habilitación del conductor. |
 | GET | `/api/v1/maintenances/alerts` | Mantenimientos próximos o vencidos (US34). |
 

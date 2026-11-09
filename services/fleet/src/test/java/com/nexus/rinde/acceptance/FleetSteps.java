@@ -253,6 +253,63 @@ public class FleetSteps {
     context.record(res);
   }
 
+  @Cuando(
+      "el administrador registra el conductor {string} con documento {string} {string}, licencia {string} categoría {string} y vencimiento {string} vinculado al usuario {string}")
+  public void registerDriverLinkedToUser(
+      String name,
+      String docType,
+      String docNumber,
+      String licNumber,
+      String category,
+      String expDate,
+      String email)
+      throws Exception {
+    String token = context.currentAdministratorToken();
+    var res =
+        api.registerDriver(
+            token,
+            context.userIdOf(email),
+            name,
+            docType,
+            docNumber,
+            licNumber,
+            category,
+            RelativeDates.date(expDate));
+    context.record(res);
+    if (context.statusCode() == 201) {
+      context.rememberDriverId(name, context.body().get("id").asText());
+    }
+  }
+
+  /** El actor (administrador, responsable o conductor) vincula la cuenta indicada al conductor. */
+  @Cuando("{string} asigna la cuenta {string} al conductor {string}")
+  public void actorAssignsAccountToDriver(String actorEmail, String accountEmail, String driverName)
+      throws Exception {
+    context.record(
+        api.updateDriverAccount(
+            context.accessTokenOf(actorEmail),
+            context.driverIdOf(driverName),
+            context.userIdOf(accountEmail)));
+  }
+
+  @Cuando("{string} retira la cuenta del conductor {string}")
+  public void actorRemovesAccountFromDriver(String actorEmail, String driverName)
+      throws Exception {
+    context.record(
+        api.updateDriverAccount(
+            context.accessTokenOf(actorEmail), context.driverIdOf(driverName), null));
+  }
+
+  @Cuando("el conductor {string} consulta su ficha de conductor")
+  public void driverConsultsOwnDriver(String email) throws Exception {
+    context.record(api.getCurrentDriver(context.accessTokenOf(email)));
+  }
+
+  @Cuando("el administrador consulta su ficha de conductor")
+  public void administratorConsultsOwnDriver() throws Exception {
+    context.record(api.getCurrentDriver(context.currentAdministratorToken()));
+  }
+
   @Cuando("el administrador lista los conductores de su empresa")
   public void listDrivers() throws Exception {
     String token = context.currentAdministratorToken();
@@ -382,6 +439,17 @@ public class FleetSteps {
   @Y("el conductor queda con el estado {string}")
   public void driverHasStatus(String status) throws Exception {
     assertThat(context.body().get("status").asText()).isEqualTo(status);
+  }
+
+  @Y("la respuesta vincula la cuenta de {string}")
+  public void responseLinksAccountOf(String email) throws Exception {
+    assertThat(context.body().get("userId").asText())
+        .isEqualTo(context.userIdOf(email).toString());
+  }
+
+  @Y("la respuesta no tiene cuenta vinculada")
+  public void responseHasNoLinkedAccount() throws Exception {
+    assertThat(context.body().get("userId").isNull()).isTrue();
   }
 
   @Y("el conductor queda habilitado")

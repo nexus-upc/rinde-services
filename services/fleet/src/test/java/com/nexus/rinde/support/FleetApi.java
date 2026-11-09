@@ -2,6 +2,7 @@ package com.nexus.rinde.support;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -117,6 +118,18 @@ public class FleetApi {
 
   public ResultActions checkDriverEligibility(String token, String driverId) throws Exception {
     return mockMvc.perform(authorized(get("/api/v1/drivers/" + driverId + "/eligibility"), token));
+  }
+
+  /** Cambia la cuenta del conductor; con userId nulo retira el vínculo. */
+  public ResultActions updateDriverAccount(String token, String driverId, UUID userId)
+      throws Exception {
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("userId", userId);
+    return perform(put("/api/v1/drivers/" + driverId + "/account"), token, body);
+  }
+
+  public ResultActions getCurrentDriver(String token) throws Exception {
+    return mockMvc.perform(authorized(get("/api/v1/drivers/me"), token));
   }
 
   private ResultActions perform(
