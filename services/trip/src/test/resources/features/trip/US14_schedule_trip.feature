@@ -49,6 +49,12 @@ Característica: US14 Programar viajes
     Cuando el conductor "luis@andes.pe" intenta programar un viaje
     Entonces la respuesta tiene código 403
 
+  Escenario: Rechazar programar un viaje cuando la suscripción de la empresa está restringida
+    Dado que la suscripción de la empresa con RUC "20123456789" está restringida
+    Cuando el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
+    Entonces la respuesta tiene código 403
+    Y el mensaje de error contiene "La suscripción está vencida"
+
   Escenario: Programar requiere autenticación
     Cuando una persona sin token programa un viaje
     Entonces la respuesta tiene código 401

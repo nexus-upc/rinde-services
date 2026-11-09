@@ -2,6 +2,7 @@ package com.nexus.rinde.acceptance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.nexus.rinde.support.IamStub;
 import com.nexus.rinde.support.TestTokens;
 import io.cucumber.java.es.Dado;
 import io.cucumber.java.es.Y;
@@ -13,10 +14,12 @@ import java.util.UUID;
 public class IdentitySteps {
 
   private final ScenarioContext context;
+  private final IamStub iam;
   private final TestTokens tokens;
 
-  public IdentitySteps(ScenarioContext context, TestTokens tokens) {
+  public IdentitySteps(ScenarioContext context, IamStub iam, TestTokens tokens) {
     this.context = context;
+    this.iam = iam;
     this.tokens = tokens;
   }
 
@@ -64,5 +67,11 @@ public class IdentitySteps {
   public void anotherAdminSignedIn(String email) {
     String token = context.accessTokenOf(email);
     context.rememberAccessToken(email, token);
+  }
+
+  /** IAM responde RESTRICTED para la empresa desde ahora; el filtro lo lee en cada petición. */
+  @Dado("que la suscripción de la empresa con RUC {string} está restringida")
+  public void theTenantSubscriptionIsRestricted(String ruc) {
+    iam.restrictTenant(context.tenantIdOf(ruc));
   }
 }

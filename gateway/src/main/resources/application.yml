@@ -37,13 +37,13 @@ spring:
                 - Path=/v3/api-docs/iam
               filters:
                 - RewritePath=/v3/api-docs/iam,/v3/api-docs
-            - id: monolith-api-docs
+            - id: core-api-docs
               uri: ${MONOLITH_URL:http://localhost:8080}
               order: 3
               predicates:
-                - Path=/v3/api-docs/monolith
+                - Path=/v3/api-docs/core
               filters:
-                - RewritePath=/v3/api-docs/monolith,/v3/api-docs
+                - RewritePath=/v3/api-docs/core,/v3/api-docs
             # Solo sirve para que PathGuardGlobalFilter responda 404; nunca se reenvía.
             - id: internal-denied
               uri: ${IAM_SERVICE_URL:http://localhost:8081}
@@ -139,8 +139,8 @@ springdoc:
         url: /v3/api-docs/fleet
       - name: Gastos
         url: /v3/api-docs/expense
-      - name: Monolito
-        url: /v3/api-docs/monolith
+      - name: core
+        url: /v3/api-docs/core
 
 management:
   endpoints:

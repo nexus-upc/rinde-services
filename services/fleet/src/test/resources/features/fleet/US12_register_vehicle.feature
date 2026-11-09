@@ -46,6 +46,19 @@ Característica: US12 Registrar y listar vehículos
     Cuando el conductor "luis@andes.pe" intenta registrar un vehículo con placa "DEF-456"
     Entonces la respuesta tiene código 403
 
+  Escenario: Rechazar el registro de un vehículo cuando la suscripción de la empresa está restringida
+    Dado que la suscripción de la empresa con RUC "20123456789" está restringida
+    Cuando el administrador registra el vehículo "camion" con placa "ABC-123", marca "Volvo", modelo "FH540", año 2022 y capacidad "15000.00"
+    Entonces la respuesta tiene código 403
+    Y el mensaje de error contiene "La suscripción está vencida"
+
+  Escenario: Listar vehículos cuando la suscripción de la empresa está restringida
+    Dado que el administrador registró el vehículo "camion" con placa "ABC-123", marca "Volvo", modelo "FH540", año 2022 y capacidad "15000.00"
+    Y que la suscripción de la empresa con RUC "20123456789" está restringida
+    Cuando el administrador lista los vehículos de su empresa
+    Entonces la respuesta tiene código 200
+    Y la lista contiene 1 vehículos
+
   Escenario: Rechazar un vehículo que supera el límite de unidades del plan
     Dado que la empresa con RUC "20123456789" tiene un plan con límite de 2 unidades
     Y que el administrador registró el vehículo "camion" con placa "ABC-123", marca "Volvo", modelo "FH540", año 2022 y capacidad "15000.00"

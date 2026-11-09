@@ -58,4 +58,10 @@ public class IdentitySteps {
     assertThat(context.userIdOf(email)).isNotNull();
     context.rememberAccessToken(email, context.accessTokenOf(email));
   }
+
+  /** IAM responde RESTRICTED para la empresa desde ahora; el filtro lo lee en cada petición. */
+  @Dado("que la suscripción de la empresa con RUC {string} está restringida")
+  public void theTenantSubscriptionIsRestricted(String ruc) {
+    fleet.restrictTenant(context.tenantIdOf(ruc));
+  }
 }
