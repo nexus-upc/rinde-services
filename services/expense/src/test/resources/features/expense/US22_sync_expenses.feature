@@ -78,3 +78,15 @@ Característica: US22 Sincronizar gastos registrados sin conexión (Offline Sync
   Escenario: Sincronizar sin autenticación es rechazado
     Cuando una persona sin token sincroniza un lote de gastos para el viaje "viaje"
     Entonces la respuesta tiene código 401
+
+  Escenario: Sincronizar un gasto sin comprobante y subir su foto después
+    Cuando el conductor sincroniza un lote con 1 gastos para el viaje "viaje"
+    Y el conductor sube el comprobante "foto-offline.jpg" al primer gasto sincronizado
+    Entonces la respuesta tiene código 201
+    Y la respuesta incluye el campo "status" con el valor "REGISTERED"
+
+  Escenario: Un campo evidence heredado no bloquea la sincronización del gasto
+    Cuando el conductor sincroniza un gasto con una URL de comprobante heredada para el viaje "viaje"
+    Entonces la respuesta tiene código 200
+    Y la respuesta incluye el campo "synchronizedCount" con el valor "1"
+    Y el primer gasto sincronizado tiene el estado "PENDING_SUPPORT" y no tiene comprobante

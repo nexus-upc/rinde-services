@@ -194,6 +194,9 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Configurar RABBITMQ_PASSWORD}
       IAM_SERVICE_URL: http://iam:8081
       TRIP_SERVICE_URL: http://trip:8082
+      RINDE_EVIDENCE_STORAGE_PATH: /var/lib/rinde/evidences
+    volumes:
+      - expense-evidence-data:/var/lib/rinde/evidences
     ports:
       - "127.0.0.1:${EXPENSE_PORT:-8084}:8084"
     depends_on:
@@ -230,3 +233,4 @@ volumes:
   postgres-trip-data:
   postgres-fleet-data:
   postgres-expense-data:
+  expense-evidence-data:

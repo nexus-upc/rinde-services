@@ -14,7 +14,7 @@ Característica: US24 Revisar y aprobar los gastos de un viaje
     Y que el administrador asigna el viaje "viaje" al vehículo "camión" y al conductor "luis@andes.pe"
     Y que el conductor "luis@andes.pe" inició sesión
     Y que el conductor inicia el viaje "viaje"
-    Y que el conductor registró un gasto "combustible" de tipo "FUEL" por el monto "200.00" con evidencia "https://storage.rinde.pe/evidences/factura.jpg" y clave "KEY-US24-01" en el viaje "viaje"
+    Y que el conductor registró un gasto "combustible" de tipo "FUEL" por el monto "200.00" con evidencia "factura.jpg" y clave "KEY-US24-01" en el viaje "viaje"
     Y que el administrador "ana@andes.pe" inició sesión
 
   Escenario: Aprobar un gasto registrado

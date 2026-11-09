@@ -2,6 +2,7 @@ package com.nexus.rinde.expense.domain.model.aggregates;
 
 import com.nexus.rinde.expense.domain.model.entities.Evidence;
 import com.nexus.rinde.expense.domain.model.events.ExpenseObserved;
+import com.nexus.rinde.expense.domain.model.valueobjects.EvidenceFile;
 import com.nexus.rinde.expense.domain.model.valueobjects.ExpenseCategory;
 import com.nexus.rinde.expense.domain.model.valueobjects.ExpenseStatus;
 import com.nexus.rinde.expense.domain.model.valueobjects.Money;
@@ -73,7 +74,7 @@ public class Expense extends AuditableAbstractAggregateRoot {
 
   protected Expense() {}
 
-  /** Crea un nuevo gasto operativo. Si incluye evidencia nace en REGISTERED; si no, en PENDING_SUPPORT. */
+  /** Crea un gasto operativo. Nace en PENDING_SUPPORT hasta que se adjunta su comprobante. */
   public static Expense create(
       UUID tenantId,
       UUID tripId,
@@ -81,10 +82,7 @@ public class Expense extends AuditableAbstractAggregateRoot {
       ExpenseCategory category,
       Money amount,
       LocalDate expenseDate,
-      String idempotencyKey,
-      String imageUrl,
-      Long fileSizeBytes,
-      Instant now) {
+      String idempotencyKey) {
     if (tenantId == null || tripId == null || driverId == null) {
       throw new BusinessRuleException("La empresa, el viaje y el conductor son obligatorios.");
     }
@@ -104,27 +102,28 @@ public class Expense extends AuditableAbstractAggregateRoot {
     expense.expenseDate = expenseDate;
     expense.idempotencyKey = idempotencyKey.trim();
     expense.isLocked = false;
-
-    if (imageUrl != null && !imageUrl.isBlank()) {
-      expense.status = ExpenseStatus.REGISTERED;
-      expense.evidence = new Evidence(expense, tenantId, imageUrl, fileSizeBytes, now != null ? now : Instant.now());
-    } else {
-      expense.status = ExpenseStatus.PENDING_SUPPORT;
-    }
-
+    expense.status = ExpenseStatus.PENDING_SUPPORT;
     return expense;
   }
 
-  /** Adjunta evidencia fotográfica a un gasto existente. */
-  public void attachEvidence(String imageUrl, Long fileSizeBytes, Instant now) {
+  /**
+   * Adjunta el comprobante o reemplaza el anterior. Un gasto pendiente de sustento pasa a
+   * REGISTERED. Devuelve la clave del archivo reemplazado, si lo había.
+   */
+  public String attachEvidence(EvidenceFile file, String storageKey, UUID uploadedBy, Instant now) {
     ensureNotLocked();
-    if (imageUrl == null || imageUrl.isBlank()) {
-      throw new BusinessRuleException("La URL de la evidencia es obligatoria.");
+    Instant uploadedAt = now != null ? now : Instant.now();
+    String previousKey = null;
+    if (evidence == null) {
+      evidence = new Evidence(this, tenantId, file, storageKey, uploadedBy, uploadedAt);
+    } else {
+      previousKey = evidence.getStorageKey();
+      evidence.replaceFile(file, storageKey, uploadedBy, uploadedAt);
     }
-    this.evidence = new Evidence(this, this.tenantId, imageUrl, fileSizeBytes, now != null ? now : Instant.now());
-    if (this.status == ExpenseStatus.PENDING_SUPPORT) {
-      this.status = ExpenseStatus.REGISTERED;
+    if (status == ExpenseStatus.PENDING_SUPPORT) {
+      status = ExpenseStatus.REGISTERED;
     }
+    return previousKey;
   }
 
   /** Aprueba el gasto durante la revisión. */
@@ -158,7 +157,8 @@ public class Expense extends AuditableAbstractAggregateRoot {
     this.isLocked = true;
   }
 
-  private void ensureNotLocked() {
+  /** Rechaza cualquier cambio cuando la liquidación del viaje ya está cerrada. */
+  public void ensureNotLocked() {
     if (isLocked) {
       throw new ConflictException("El gasto se encuentra bloqueado por liquidación cerrada.");
     }
