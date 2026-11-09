@@ -82,7 +82,7 @@ Endpoints públicos. Los de acceso y registro no llevan JWT; el resto requiere `
 | POST | `/api/v1/tenants` | Registro de empresa y de su administrador (US08). |
 | POST | `/api/v1/tenants/{id}/verification` | Verificación del correo de la empresa (US08). |
 | GET | `/api/v1/users/me` | Perfil del usuario que inicia sesión, con los datos de su empresa (cualquier rol). Responde `{id, fullName, email, role, status, tenant: {id, tradeName, ruc, status}}`. |
-| GET | `/api/v1/users` | Listado de usuarios de la empresa (US11). |
+| GET | `/api/v1/users` | Listado de usuarios de la empresa (US11). Con `?role=DRIVER` también lo usa el responsable de operaciones, que solo ve cuentas DRIVER de su empresa; sin `role` o con otro rol responde 403. Un rol inexistente responde 400. |
 | POST | `/api/v1/users` | Invitación de usuario (US11). |
 | PATCH | `/api/v1/users/{id}` | Cambio de rol o de estado de un usuario (US11). |
 

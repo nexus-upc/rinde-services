@@ -25,6 +25,7 @@ public class UserQueryServiceImpl implements UserQueryService {
   @Transactional(readOnly = true)
   public List<User> handle(GetUsersByTenantQuery query) {
     return userRepository.findByTenantId(query.tenantId()).stream()
+        .filter(user -> query.role() == null || user.getRole() == query.role())
         .sorted(Comparator.comparing(user -> user.getFullName().toLowerCase()))
         .toList();
   }

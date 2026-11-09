@@ -8,6 +8,7 @@ import com.nexus.rinde.iam.domain.model.queries.GetUserByIdQuery;
 import com.nexus.rinde.iam.domain.model.queries.GetUsersByTenantQuery;
 import com.nexus.rinde.iam.domain.model.valueobjects.Email;
 import com.nexus.rinde.iam.domain.model.valueobjects.PasswordHash;
+import com.nexus.rinde.iam.domain.model.valueobjects.Role;
 import com.nexus.rinde.iam.domain.model.valueobjects.TenantId;
 import com.nexus.rinde.iam.infrastructure.persistence.jpa.repositories.UserRepository;
 import java.util.List;
@@ -40,6 +41,17 @@ class UserQueryServiceImplTest {
     List<User> users = service.handle(new GetUsersByTenantQuery(tenantId));
 
     assertThat(users).containsExactly(ana, zoe);
+  }
+
+  @Test
+  void listsOnlyTheUsersOfTheRequestedRole() {
+    User admin = user(tenantId, "Ana Rojas", "ana@andes.pe");
+    User driver = new User(tenantId, "Luis Quispe", new Email("luis@andes.pe"), Role.DRIVER);
+    when(userRepository.findByTenantId(tenantId)).thenReturn(List.of(admin, driver));
+
+    List<User> drivers = service.handle(new GetUsersByTenantQuery(tenantId, Role.DRIVER));
+
+    assertThat(drivers).containsExactly(driver);
   }
 
   @Test

@@ -70,6 +70,10 @@ public class IamApi {
     return mockMvc.perform(authorized(get("/api/v1/users"), accessToken));
   }
 
+  public ResultActions listUsersWithRole(String accessToken, String role) throws Exception {
+    return mockMvc.perform(authorized(get("/api/v1/users").param("role", role), accessToken));
+  }
+
   public ResultActions currentUser(String accessToken) throws Exception {
     return mockMvc.perform(authorized(get("/api/v1/users/me"), accessToken));
   }

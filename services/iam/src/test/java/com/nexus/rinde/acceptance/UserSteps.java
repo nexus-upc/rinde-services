@@ -87,6 +87,21 @@ public class UserSteps {
     context.record(api.listUsers(context.accessTokenOf(email)));
   }
 
+  @Cuando("el administrador lista los usuarios con el rol {string}")
+  public void theAdministratorListsTheUsersWithRole(String role) throws Exception {
+    context.record(api.listUsersWithRole(context.currentAdministratorToken(), role));
+  }
+
+  @Cuando("{string} lista los usuarios con el rol {string}")
+  public void aUserListsTheUsersWithRole(String email, String role) throws Exception {
+    context.record(api.listUsersWithRole(context.accessTokenOf(email), role));
+  }
+
+  @Cuando("{string} lista los usuarios")
+  public void aUserListsTheUsers(String email) throws Exception {
+    context.record(api.listUsers(context.accessTokenOf(email)));
+  }
+
   @Cuando("el administrador cambia el rol del usuario {string} a {string}")
   public void theAdministratorChangesTheRole(String email, String role) throws Exception {
     context.record(
