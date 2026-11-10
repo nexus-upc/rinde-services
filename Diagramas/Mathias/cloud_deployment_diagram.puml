@@ -1,0 +1,184 @@
+@startuml Cloud_Deployment_Diagram
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 8
+skinparam shadowing false
+skinparam handwritten false
+
+skinparam node {
+  BackgroundColor #F8F9FA
+  BorderColor #6C757D
+  FontColor #212529
+}
+
+skinparam component {
+  BackgroundColor #E9ECEF
+  BorderColor #495057
+  FontColor #212529
+}
+
+skinparam database {
+  BackgroundColor #E8F4F8
+  BorderColor #17A2B8
+  FontColor #212529
+}
+
+skinparam queue {
+  BackgroundColor #FFF3CD
+  BorderColor #FFC107
+  FontColor #856404
+}
+
+skinparam rectangle {
+  BorderColor #6C757D
+}
+
+title Diagrama de Despliegue en la Nube - RINDE by NEXUS (AWS Architecture)
+footer Costos de infraestructura mensual (~USD 297.00) marcados explícitamente como "POR VERIFICAR"
+
+actor "Administrador / Operador\n(Navegador Web)" as AdminClient #D1ECF1
+actor "Conductor en Ruta\n(App Android - HTTPS)" as DriverMobile #D4EDDA
+
+cloud "Borde e Internet (Public Edge & CDN)" {
+  [Amazon Route 53\n(DNS)] as Route53 #E2E3E5
+  [AWS WAF & Shield\n(Firewall de Aplicación)] as WAF #F8D7DA
+  [Amazon CloudFront CDN\n(Edge Location en Lima / Sudamérica)] as CloudFront #D1ECF1
+  [AWS Certificate Manager (ACM)\n(TLS / SSL *.rinde.pe)] as ACM #E2E3E5
+}
+
+rectangle "AWS Cloud (Region: us-east-1)" {
+
+  package "Almacenamiento Estático y Privado (Amazon S3)" {
+    [S3 Bucket: rinde-web-app\n(Angular SPA - app.rinde.pe)] as S3Web #CCE5FF
+    [S3 Bucket: rinde-landing\n(Landing Page - rinde.pe)] as S3Landing #CCE5FF
+    [S3 Bucket Privado: rinde-expenses-evidence\n(Comprobantes / Fotos de Gastos\nSSE-S3 + Presigned URLs)] as S3Evidences #FFF3CD
+  }
+
+  package "VPC: vpc-rinde-prod (10.0.0.0/16)" {
+
+    node "Capa Pública (Public Subnets - Multi-AZ: 10.0.1.0/24 y 10.0.2.0/24)" {
+      [Internet Gateway] as IGW #D1ECF1
+      [NAT Gateways (AZ-A & AZ-B)] as NATGW #E2E3E5
+      [Application Load Balancer (ALB)\n(HTTPS / Puerto 443 - TLS ACM)] as ALB #C3E6CB
+    }
+
+    node "Capa de Aplicación (Private App Subnets - Multi-AZ: 10.0.11.0/24 y 10.0.12.0/24)" {
+      package "AWS ECS Cluster (Fargate Serverless Containers)" {
+        [API Gateway\n(Spring Cloud Gateway\nPuerto 8000)] as SvcGateway #D4EDDA
+        [Microservicio Core\n(Dashboard & Legacy\nPuerto 8080)] as SvcCore #E2E3E5
+        [Microservicio IAM\n(Auth & Tenants\nPuerto 8081)] as SvcIam #E2E3E5
+        [Microservicio Trip\n(Viajes & Despacho\nPuerto 8082)] as SvcTrip #E2E3E5
+        [Microservicio Fleet\n(Flota & Mantenimiento\nPuerto 8083)] as SvcFleet #E2E3E5
+        [Microservicio Expense\n(Gastos & Evidencias\nPuerto 8084)] as SvcExpense #E2E3E5
+        [Microservicio Incident\n(Incidentes en Ruta\nPuerto 8085)] as SvcIncident #E2E3E5
+        [Microservicio Settlement\n(Liquidaciones & Adelantos\nPuerto 8086)] as SvcSettlement #E2E3E5
+        [Microservicio Subscriptions\n(Planes & Facturación\nPuerto 8087)] as SvcSubscriptions #E2E3E5
+      }
+    }
+
+    node "Capa de Datos Aislada (Isolated DB Subnets - Multi-AZ: 10.0.21.0/24 y 10.0.22.0/24)" {
+      database "Amazon RDS for PostgreSQL 17 (Multi-AZ)\n(Bases de datos independientes - Database per Service)" as RDS {
+        [rinde_iam]
+        [rinde_trip]
+        [rinde_fleet]
+        [rinde_expense]
+        [rinde_incident]
+        [rinde_settlement]
+        [rinde_subscription]
+        [rinde (core)]
+      }
+
+      queue "Amazon MQ for RabbitMQ (Active/Standby Multi-AZ)\n(Exchange: rinde.events [Topic AMQP 0-9-1])" as RabbitMQ {
+        [fleet.trip-events]
+        [settlement.trip-events]
+        [core.notifications]
+      }
+    }
+  }
+
+  package "Servicios de Soporte, Seguridad y Observabilidad" {
+    [AWS Secrets Manager & SSM\n(Credenciales, JWT, DB passwords)] as SecretsMgr #FFF3CD
+    [Amazon CloudWatch\n(Logs centralizados y Métricas)] as CloudWatch #E2E3E5
+    [AWS X-Ray\n(Trazabilidad con x-correlation-id)] as XRay #E2E3E5
+  }
+}
+
+' Flujos de clientes hacia el borde
+AdminClient --> Route53 : Consulta DNS\n(app.rinde.pe)
+DriverMobile --> Route53 : Consulta DNS\n(api.rinde.pe)
+Route53 --> WAF
+WAF --> CloudFront : Tráfico Web / Assets
+WAF --> ALB : API Requests (HTTPS)
+
+' CloudFront hacia S3 Frontend
+CloudFront --> S3Web : Origin Access Control (OAC)
+CloudFront --> S3Landing : OAC (Landing Page)
+CloudFront ..> ALB : Forward /api/*
+
+' Tráfico de red pública a privada
+ALB --> SvcGateway : Enrutamiento HTTP/2\n(Puerto 8000)
+NATGW ..> IGW : Salida segura externa
+
+' Enrutamiento de Gateway hacia microservicios
+SvcGateway --> SvcCore : /api/v1/dashboard/**
+SvcGateway --> SvcIam : /api/v1/auth/**, /api/v1/users/**
+SvcGateway --> SvcTrip : /api/v1/trips/**
+SvcGateway --> SvcFleet : /api/v1/vehicles/**, /api/v1/drivers/**, /api/v1/maintenances/**
+SvcGateway --> SvcExpense : /api/v1/expenses/**
+SvcGateway --> SvcIncident : /api/v1/incidents/**
+SvcGateway --> SvcSettlement : /api/v1/settlements/**
+SvcGateway --> SvcSubscriptions : /api/v1/subscriptions/**
+
+' Interacción de microservicios con persistencia
+SvcIam --> [rinde_iam] : JDBC SSL (5432)
+SvcTrip --> [rinde_trip] : JDBC SSL (5432)
+SvcFleet --> [rinde_fleet] : JDBC SSL (5432)
+SvcExpense --> [rinde_expense] : JDBC SSL (5432)
+SvcIncident --> [rinde_incident] : JDBC SSL (5432)
+SvcSettlement --> [rinde_settlement] : JDBC SSL (5432)
+SvcSubscriptions --> [rinde_subscription] : JDBC SSL (5432)
+SvcCore --> [rinde (core)] : JDBC SSL (5432)
+
+' Comunicación asíncrona mediante RabbitMQ
+SvcTrip ..> RabbitMQ : Publica trip.started / trip.finished
+RabbitMQ ..> SvcFleet : Consume eventos trip (idempotente)
+RabbitMQ ..> SvcSettlement : Consume trip.finished
+SvcFleet ..> RabbitMQ : Publica fleet.maintenance-due
+SvcSettlement ..> RabbitMQ : Publica settlement.closed
+
+' Evidencias privadas
+SvcExpense --> S3Evidences : Genera Pre-signed URLs\n(Subida PUT / Descarga temporal)
+DriverMobile ..> S3Evidences : Carga directa con Presigned URL\n(Sin exponer credenciales)
+
+' Inyección de secretos y observabilidad
+ECS ..> SecretsMgr : Inyección de variables de entorno al iniciar
+ECS ..> CloudWatch : Logs (awslogs) y telemetría
+ECS ..> XRay : Segmentos de traza distribuida (x-correlation-id)
+
+note right of DriverMobile
+  <b>Seguridad Android:</b>
+  network_security_config.xml
+  exige HTTPS estricto en builds de
+  Release. Cleartext (HTTP) permitido
+  únicamente en debug local (10.0.2.2).
+end note
+
+note bottom of RDS
+  <b>Database per Service:</b>
+  Aislamiento transaccional estricto.
+  Migraciones Flyway ejecutadas en
+  ECS RunTask previa con usuario DDL.
+  Usuarios de runtime con permisos DML.
+  <b>Costos por verificar: ~USD 76.00/mes</b>
+end note
+
+note bottom of RabbitMQ
+  <b>Mensajería Event-Driven:</b>
+  Amazon MQ for RabbitMQ
+  Paridad total con protocolo AMQP 0-9-1.
+  <b>Costos por verificar: ~USD 65.00/mes</b>
+end note
+
+@enduml
