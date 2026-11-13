@@ -86,6 +86,8 @@ rinde:
       email-verification-validity-hours: 48
   trip:
     base-url: ${TRIP_SERVICE_URL:http://localhost:8082}
+  settlement:
+    base-url: ${SETTLEMENT_SERVICE_URL:http://localhost:8086}
   fleet:
     base-url: ${FLEET_SERVICE_URL:http://localhost:8083}
     maintenance-alerts:

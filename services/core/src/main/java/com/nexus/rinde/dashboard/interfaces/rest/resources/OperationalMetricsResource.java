@@ -11,4 +11,5 @@ public record OperationalMetricsResource(
     int totalExpenses,
     int approvedExpenses,
     int pendingExpenses,
-    int observedExpenses) {}
+    int observedExpenses,
+    long pendingSettlements) {}

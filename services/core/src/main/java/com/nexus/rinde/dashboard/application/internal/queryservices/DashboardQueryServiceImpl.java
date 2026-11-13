@@ -1,6 +1,7 @@
 package com.nexus.rinde.dashboard.application.internal.queryservices;
 
 import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardFleetClient;
+import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardSettlementClient;
 import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardTripClient;
 import com.nexus.rinde.dashboard.domain.model.queries.GetFleetStatusQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetOperationalMetricsQuery;
@@ -15,8 +16,7 @@ import com.nexus.rinde.expense.interfaces.acl.ExpenseContextFacade;
 import com.nexus.rinde.expense.interfaces.acl.ExpenseSummary;
 import com.nexus.rinde.fleet.interfaces.acl.FleetDriverSummary;
 import com.nexus.rinde.fleet.interfaces.acl.FleetVehicleSummary;
-import com.nexus.rinde.settlement.interfaces.acl.SettlementSummary;
-import com.nexus.rinde.settlement.interfaces.acl.SettlementContextFacade;
+import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardSettlementClient.SettlementInfo;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import com.nexus.rinde.trip.interfaces.acl.TripSummary;
 import java.math.BigDecimal;
@@ -30,17 +30,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class DashboardQueryServiceImpl implements DashboardQueryService {
 
   private final DashboardTripClient tripClient;
-  private final SettlementContextFacade settlementFacade;
+  private final DashboardSettlementClient settlementClient;
   private final ExpenseContextFacade expenseFacade;
   private final DashboardFleetClient fleetClient;
 
   public DashboardQueryServiceImpl(
       DashboardTripClient tripClient,
-      SettlementContextFacade settlementFacade,
+      DashboardSettlementClient settlementClient,
       ExpenseContextFacade expenseFacade,
       DashboardFleetClient fleetClient) {
     this.tripClient = tripClient;
-    this.settlementFacade = settlementFacade;
+    this.settlementClient = settlementClient;
     this.expenseFacade = expenseFacade;
     this.fleetClient = fleetClient;
   }
@@ -69,8 +69,8 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
             .findFirst()
             .orElse("PEN");
 
-    SettlementSummary settlement =
-        settlementFacade.findByTripIdAndTenantId(query.tripId(), query.tenantId()).orElse(null);
+    SettlementInfo settlement =
+        settlementClient.findByTripIdAndTenantId(query.tripId(), query.tenantId()).orElse(null);
 
     return new TripSummaryResource(
         trip.id(),
@@ -152,6 +152,7 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
 
     List<TripSummary> trips = tripClient.findByTenantId(tenantId);
     List<ExpenseSummary> expenses = expenseFacade.findByTenantId(tenantId);
+    long pendingSettlements = settlementClient.countPendingByTenantId(tenantId);
 
     int scheduled = (int) trips.stream().filter(t -> "SCHEDULED".equals(t.status())).count();
     int assigned = (int) trips.stream().filter(t -> "ASSIGNED".equals(t.status())).count();
@@ -180,6 +181,7 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
         expenses.size(),
         approved,
         pending,
-        observed);
+        observed,
+        pendingSettlements);
   }
 }
