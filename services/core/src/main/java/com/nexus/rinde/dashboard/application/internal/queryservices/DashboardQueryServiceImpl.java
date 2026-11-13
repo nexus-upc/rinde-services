@@ -2,6 +2,7 @@ package com.nexus.rinde.dashboard.application.internal.queryservices;
 
 import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardFleetClient;
 import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardSettlementClient;
+import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardSettlementClient.SettlementInfo;
 import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardTripClient;
 import com.nexus.rinde.dashboard.domain.model.queries.GetFleetStatusQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetOperationalMetricsQuery;
@@ -11,17 +12,21 @@ import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource.DriverSummary;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource.VehicleSummary;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.OperationalMetricsResource;
+import com.nexus.rinde.dashboard.interfaces.rest.resources.OperationalMetricsResource.IncidentsInfo;
+import com.nexus.rinde.dashboard.interfaces.rest.resources.OperationalMetricsResource.PeriodInfo;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.TripSummaryResource;
 import com.nexus.rinde.expense.interfaces.acl.ExpenseContextFacade;
 import com.nexus.rinde.expense.interfaces.acl.ExpenseSummary;
 import com.nexus.rinde.fleet.interfaces.acl.FleetDriverSummary;
 import com.nexus.rinde.fleet.interfaces.acl.FleetVehicleSummary;
-import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardSettlementClient.SettlementInfo;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import com.nexus.rinde.trip.interfaces.acl.TripSummary;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -149,39 +154,66 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
   @Transactional(readOnly = true)
   public OperationalMetricsResource handle(GetOperationalMetricsQuery query) {
     UUID tenantId = query.tenantId();
+    LocalDate from = query.from();
+    LocalDate to = query.to();
 
     List<TripSummary> trips = tripClient.findByTenantId(tenantId);
     List<ExpenseSummary> expenses = expenseFacade.findByTenantId(tenantId);
     long pendingSettlements = settlementClient.countPendingByTenantId(tenantId);
 
-    int scheduled = (int) trips.stream().filter(t -> "SCHEDULED".equals(t.status())).count();
-    int assigned = (int) trips.stream().filter(t -> "ASSIGNED".equals(t.status())).count();
-    int inRoute = (int) trips.stream().filter(t -> "IN_ROUTE".equals(t.status())).count();
-    int finished = (int) trips.stream().filter(t -> "FINISHED".equals(t.status())).count();
-    int settled = (int) trips.stream().filter(t -> "SETTLED".equals(t.status())).count();
+    List<TripSummary> periodTrips =
+        trips.stream().filter(t -> inPeriod(t.departureDate(), from, to)).toList();
+    List<ExpenseSummary> periodExpenses =
+        expenses.stream().filter(e -> inPeriod(e.expenseDate(), from, to)).toList();
 
-    int approved = (int) expenses.stream().filter(e -> "APPROVED".equals(e.status())).count();
+    int scheduled =
+        (int) periodTrips.stream().filter(t -> "SCHEDULED".equals(t.status())).count();
+    int assigned = (int) periodTrips.stream().filter(t -> "ASSIGNED".equals(t.status())).count();
+    int inRoute = (int) periodTrips.stream().filter(t -> "IN_ROUTE".equals(t.status())).count();
+    int finished = (int) periodTrips.stream().filter(t -> "FINISHED".equals(t.status())).count();
+    int settled = (int) periodTrips.stream().filter(t -> "SETTLED".equals(t.status())).count();
+
+    int approved =
+        (int) periodExpenses.stream().filter(e -> "APPROVED".equals(e.status())).count();
     int pending =
         (int)
-            expenses.stream()
+            periodExpenses.stream()
                 .filter(
-                    e ->
-                        "PENDING_SUPPORT".equals(e.status())
-                            || "REGISTERED".equals(e.status()))
+                    e -> "PENDING_SUPPORT".equals(e.status()) || "REGISTERED".equals(e.status()))
                 .count();
-    int observed = (int) expenses.stream().filter(e -> "OBSERVED".equals(e.status())).count();
+    int observed =
+        (int) periodExpenses.stream().filter(e -> "OBSERVED".equals(e.status())).count();
+
+    Map<String, BigDecimal> approvedExpenseTotals =
+        periodExpenses.stream()
+            .filter(e -> "APPROVED".equals(e.status()))
+            .collect(
+                Collectors.groupingBy(
+                    e -> e.currency() != null ? e.currency() : "PEN",
+                    Collectors.reducing(BigDecimal.ZERO, ExpenseSummary::amount, BigDecimal::add)));
 
     return new OperationalMetricsResource(
-        trips.size(),
+        new PeriodInfo(from.toString(), to.toString()),
+        periodTrips.size(),
         scheduled,
         assigned,
         inRoute,
         finished,
         settled,
-        expenses.size(),
+        periodExpenses.size(),
         approved,
         pending,
         observed,
-        pendingSettlements);
+        approvedExpenseTotals,
+        pendingSettlements,
+        new IncidentsInfo(null, "UNAVAILABLE"),
+        false);
+  }
+
+  private static boolean inPeriod(LocalDate date, LocalDate from, LocalDate to) {
+    if (date == null) return true;
+    if (from != null && date.isBefore(from)) return false;
+    if (to != null && date.isAfter(to)) return false;
+    return true;
   }
 }

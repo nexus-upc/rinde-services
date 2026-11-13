@@ -14,7 +14,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDate;
 import java.util.UUID;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +25,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Endpoints del dashboard operativo para administradores y operadores. */
@@ -94,12 +98,17 @@ public class DashboardController {
   @Operation(
       summary = "Métricas operativas consolidadas (US37)",
       description =
-          "Devuelve conteos de viajes por estado y gastos por estado de auditoría"
-              + " para el panel de métricas de la empresa.")
+          "Devuelve conteos de viajes y gastos del periodo indicado (from/to en AAAA-MM-DD)."
+              + " Sin parámetros usa el mes en curso hasta hoy.")
   @ApiResponse(responseCode = "200", description = "Métricas operativas")
-  public ResponseEntity<OperationalMetricsResource> getMetrics() {
+  public ResponseEntity<OperationalMetricsResource> getMetrics(
+      @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+      @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
+    LocalDate resolvedFrom = from != null ? from : LocalDate.now().withDayOfMonth(1);
+    LocalDate resolvedTo = to != null ? to : LocalDate.now();
     OperationalMetricsResource metrics =
-        dashboardQueryService.handle(new GetOperationalMetricsQuery(TenantContext.tenantId()));
+        dashboardQueryService.handle(
+            new GetOperationalMetricsQuery(TenantContext.tenantId(), resolvedFrom, resolvedTo));
     return ResponseEntity.ok(metrics);
   }
 }
