@@ -17,6 +17,7 @@
     <module>services/fleet</module>
     <module>services/expense</module>
     <module>services/incident</module>
+    <module>services/subscription</module>
     <module>gateway</module>
   </modules>
 </project>
