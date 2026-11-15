@@ -20,8 +20,9 @@ spring:
               order: 0
               predicates:
                 - Path=/api/v1/platform/auth/**,/api/v1/platform/me,/api/v1/platform/overview,/api/v1/platform/companies/**,/api/v1/platform/audit/identity,/api/v1/platform/demo-mailbox/**,/api/v1/platform/demo-requests
+            # La administración de planes, suscripciones y cobros vive en el servicio de Subscriptions.
             - id: platform-billing
-              uri: ${MONOLITH_URL:http://localhost:8080}
+              uri: ${SUBSCRIPTION_SERVICE_URL:http://localhost:8087}
               order: 1
               predicates:
                 - Path=/api/v1/platform/billing/**,/api/v1/platform/plans/**,/api/v1/platform/subscriptions/**,/api/v1/platform/payments/**,/api/v1/platform/audit/billing
@@ -97,6 +98,19 @@ spring:
                 - Path=/v3/api-docs/fleet
               filters:
                 - RewritePath=/v3/api-docs/fleet,/v3/api-docs
+            # Subscriptions & Billing va antes del comodín de core.
+            - id: subscription-service
+              uri: ${SUBSCRIPTION_SERVICE_URL:http://localhost:8087}
+              order: 10
+              predicates:
+                - Path=/api/v1/plans,/api/v1/plans/**,/api/v1/subscriptions,/api/v1/subscriptions/**,/api/v1/billing/**
+            - id: subscription-api-docs
+              uri: ${SUBSCRIPTION_SERVICE_URL:http://localhost:8087}
+              order: 11
+              predicates:
+                - Path=/v3/api-docs/subscription
+              filters:
+                - RewritePath=/v3/api-docs/subscription,/v3/api-docs
             - id: monolith-service
               uri: ${MONOLITH_URL:http://localhost:8080}
               order: 12
@@ -154,6 +168,8 @@ springdoc:
         url: /v3/api-docs/expense
       - name: Incidentes
         url: /v3/api-docs/incident
+      - name: Suscripciones
+        url: /v3/api-docs/subscription
       - name: core
         url: /v3/api-docs/core
 

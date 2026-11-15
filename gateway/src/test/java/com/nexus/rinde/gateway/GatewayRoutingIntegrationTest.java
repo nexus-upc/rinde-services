@@ -120,6 +120,30 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
   }
 
   @Test
+  void routesPlansSubscriptionsAndBillingToTheSubscriptionService() {
+    String token = validToken();
+    SUBSCRIPTION.stubFor(get(urlEqualTo("/api/v1/plans")).willReturn(okJson("[]")));
+    SUBSCRIPTION.stubFor(
+        get(urlEqualTo("/api/v1/subscriptions/current")).willReturn(okJson("{}")));
+
+    for (String path : new String[] {"/api/v1/plans", "/api/v1/subscriptions/current"}) {
+      webTestClient
+          .get()
+          .uri(path)
+          .header(AUTHORIZATION, "Bearer " + token)
+          .exchange()
+          .expectStatus()
+          .isOk();
+    }
+
+    SUBSCRIPTION.verify(
+        getRequestedFor(urlEqualTo("/api/v1/plans"))
+            .withHeader(AUTHORIZATION, equalTo("Bearer " + token)));
+    SUBSCRIPTION.verify(getRequestedFor(urlEqualTo("/api/v1/subscriptions/current")));
+    MONOLITH.verify(0, anyRequestedFor(anyUrl()));
+  }
+
+  @Test
   void routesTripAdvancesToTheMonolithNextToTheSettlement() {
     String token = validToken();
     MONOLITH.stubFor(

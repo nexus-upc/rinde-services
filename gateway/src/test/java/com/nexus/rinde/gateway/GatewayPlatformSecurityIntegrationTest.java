@@ -104,7 +104,7 @@ class GatewayPlatformSecurityIntegrationTest extends AbstractGatewayIntegrationT
   @Test
   void routesPlatformIdentityAndBillingOnlyAfterAuthentication() {
     IAM.stubFor(get("/api/v1/platform/companies").willReturn(okJson("{\"items\":[],\"total\":0}")));
-    MONOLITH.stubFor(
+    SUBSCRIPTION.stubFor(
         get("/api/v1/platform/plans").willReturn(okJson("{\"items\":[],\"total\":0}")));
     webTestClient
         .get()
