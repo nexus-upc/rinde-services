@@ -53,7 +53,7 @@ rectangle "AWS Cloud (Region: us-east-1)" {
   package "Almacenamiento Estático y Privado (Amazon S3)" {
     [S3 Bucket: rinde-web-app\n(Angular SPA - app.rinde.pe)] as S3Web #CCE5FF
     [S3 Bucket: rinde-landing\n(Landing Page - rinde.pe)] as S3Landing #CCE5FF
-    [S3 Bucket Privado: rinde-expenses-evidence\n(Comprobantes / Fotos de Gastos\nSSE-S3 + Presigned URLs)] as S3Evidences #FFF3CD
+    [S3 Bucket Privado: rinde-expenses-evidence\n(Comprobantes / Fotos de Gastos\nSSE-S3 - Solo lectura/escritura vía Expense)] as S3Evidences #FFF3CD
   }
 
   package "VPC: vpc-rinde-prod (10.0.0.0/16)" {
@@ -65,7 +65,7 @@ rectangle "AWS Cloud (Region: us-east-1)" {
     }
 
     node "Capa de Aplicación (Private App Subnets - Multi-AZ: 10.0.11.0/24 y 10.0.12.0/24)" {
-      package "AWS ECS Cluster (Fargate Serverless Containers)" {
+      package "AWS ECS Cluster (Fargate Serverless Containers)" as ECSCluster {
         [API Gateway\n(Spring Cloud Gateway\nPuerto 8000)] as SvcGateway #D4EDDA
         [Microservicio Core\n(Dashboard & Legacy\nPuerto 8080)] as SvcCore #E2E3E5
         [Microservicio IAM\n(Auth & Tenants\nPuerto 8081)] as SvcIam #E2E3E5
@@ -148,14 +148,13 @@ RabbitMQ ..> SvcSettlement : Consume trip.finished
 SvcFleet ..> RabbitMQ : Publica fleet.maintenance-due
 SvcSettlement ..> RabbitMQ : Publica settlement.closed
 
-' Evidencias privadas
-SvcExpense --> S3Evidences : Genera Pre-signed URLs\n(Subida PUT / Descarga temporal)
-DriverMobile ..> S3Evidences : Carga directa con Presigned URL\n(Sin exponer credenciales)
+' Evidencias privadas (almacenadas en S3 y servidas únicamente vía Expense con JWT, empresa y rol)
+SvcExpense --> S3Evidences : PutObject / GetObject (IAM Role)\nAlmacenamiento privado y servicio binario (/content)
 
 ' Inyección de secretos y observabilidad
-ECS ..> SecretsMgr : Inyección de variables de entorno al iniciar
-ECS ..> CloudWatch : Logs (awslogs) y telemetría
-ECS ..> XRay : Segmentos de traza distribuida (x-correlation-id)
+ECSCluster ..> SecretsMgr : Inyección de variables de entorno al iniciar
+ECSCluster ..> CloudWatch : Logs (awslogs) y telemetría
+ECSCluster ..> XRay : Segmentos de traza distribuida (x-correlation-id)
 
 note right of DriverMobile
   <b>Seguridad Android:</b>

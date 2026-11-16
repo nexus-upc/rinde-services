@@ -16,7 +16,7 @@ A partir de la evolución modular experimentada entre los Sprints 1, 2 y 3, el s
 1. **Desacoplamiento Operativo y Aislamiento de Datos (Database-per-Service):** Cada microservicio posee persistencia exclusiva sin compartición de esquemas ni consultas transaccionales cruzadas.
 2. **Computación Serverless en Contenedores:** Eliminación de la administración manual de servidores mediante contenedores efímeros y autoescalables.
 3. **Comunicación Asíncrona Confiable:** Mensajería guiada por eventos mediante RabbitMQ para garantizar consistencia eventual e idempotencia.
-4. **Seguridad Integral (Zero Trust & Defense in Depth):** Cifrado en tránsito y en reposo, aislamiento en redes privadas virtuales (VPC), almacenamiento privado de evidencias con URLs prefirmadas (Pre-signed URLs), y estricta separación de permisos de red y base de datos.
+4. **Seguridad Integral (Zero Trust & Defense in Depth):** Cifrado en tránsito y en reposo, aislamiento en redes privadas virtuales (VPC), almacenamiento privado de evidencias en Amazon S3 accesible únicamente por el microservicio Expense tras validar token JWT, empresa y rol, y estricta separación de permisos de red y base de datos.
 5. **Observabilidad Distribuida:** Centralización de métricas, registros y trazabilidad de extremo a extremo propagando el identificador `x-correlation-id`.
 
 ---
@@ -30,7 +30,7 @@ Para determinar el proveedor idóneo, se evaluaron exhaustivamente las tres plat
 | **Cómputo en Contenedores (Serverless)** | **AWS ECS con Fargate:**<br>Orquestación ligera sin gestionar instancias EC2. Compatible nativamente con imágenes Docker estándar Temurin 21. Asignación granular de roles IAM por tarea (Task Role). Escalado ágil por métricas de CPU/RAM. | **Azure Container Apps (ACA):**<br>Basado en Kubernetes (KEDA). Excelente integración con microservicios y escalado a cero, aunque mayor complejidad en configuración de redes virtuales dedicadas y depuración. | **Google Cloud Run:**<br>Altamente optimizado para contenedores sin estado con peticiones HTTP entrantes. Limitaciones en tareas de fondo continuas (workers de RabbitMQ y scheduled jobs como `MaintenanceDueJob`). |
 | **Persistencia Relacional (PostgreSQL)** | **Amazon RDS for PostgreSQL 17:**<br>Soporte maduro, automatización de copias de seguridad continuas, réplicas de lectura, failover Multi-AZ transparente y compatibilidad total con extensiones y Flyway. | **Azure Database for PostgreSQL (Flexible Server):**<br>Excelente soporte y alta disponibilidad de zona redundante, pero costos base de cómputo y almacenamiento ligeramente superiores en niveles pequeños. | **Cloud SQL for PostgreSQL:**<br>Administración robusta y mantenimiento automatizado, aunque los tiempos de conmutación por error (failover) suelen ser mayores frente a RDS Multi-AZ. |
 | **Broker de Mensajería (RabbitMQ)** | **Amazon MQ for RabbitMQ:**<br>Servicio totalmente administrado con compatibilidad nativa 100% AMQP 0-9-1. Soporta configuración de clúster activo/standby Multi-AZ. Sin cambios de código en Spring AMQP. | **No administrado nativamente:**<br>Azure ofrece Service Bus (protocolo AMQP 1.0 / proprietary), requiriendo adaptar todo el código a JMS/Azure SDK, o bien contratar un servicio de terceros (CloudAMQP). | **No administrado nativamente:**<br>GCP promueve Cloud Pub/Sub, lo que exigiría reemplazar RabbitMQ y reescribir la capa de infraestructura de mensajería de todos los microservicios. |
-| **Almacenamiento de Evidencias y Privacidad** | **Amazon S3:**<br>Estándar industrial de almacenamiento de objetos. Cifrado SSE-S3 / SSE-KMS, ciclo de vida de objetos, bloqueo de acceso público y generación de Pre-signed URLs nativas y de bajo costo. | **Azure Blob Storage:**<br>Almacenamiento seguro y soporte para SAS (Shared Access Signatures). Curva de integración con Spring Cloud algo más compleja que el SDK estándar de S3. | **Google Cloud Storage (GCS):**<br>Excelente rendimiento y URLs firmadas muy ágiles, similar a S3 en costo y fiabilidad. |
+| **Almacenamiento de Evidencias y Privacidad** | **Amazon S3:**<br>Estándar industrial de almacenamiento privado de objetos. Cifrado SSE-S3 / SSE-KMS, bloqueo total de acceso público e integración directa mediante AWS SDK v2 con roles IAM de ECS, permitiendo que el microservicio `expense` guarde y sirva los archivos directamente sin exponer el bucket. | **Azure Blob Storage:**<br>Almacenamiento privado administrado mediante SDK de Azure y Managed Identities, aunque con mayor acoplamiento de configuración en contenedores Spring Boot frente al estándar S3. | **Google Cloud Storage (GCS):**<br>Buen rendimiento y acceso privado por IAM/SDK, aunque en ecosistemas Java multi-nube el API compatible con S3 es el estándar más extendido. |
 | **Distribución de Frontend y Landing Page** | **Amazon CloudFront + S3:**<br>CDN global con presencia en Lima (Edge Location), compresión Brotli/Gzip, certificados SSL gratuitos vía ACM y reescritura de rutas para Angular SPA. | **Azure Static Web Apps / Front Door:**<br>Muy buena integración de CI/CD para frontend, pero costos de Front Door significativamente más altos para proyectos medianos. | **Firebase Hosting / Cloud CDN:**<br>Despliegue muy rápido y caché global, aunque la administración centralizada con VPC es más segmentada. |
 | **Gestión de Secretos y Configuración** | **AWS Secrets Manager & SSM Parameter Store:**<br>Rotación automática de credenciales de base de datos, inyección transparente como variables de entorno a nivel de ECS Task Definition. | **Azure Key Vault:**<br>Altamente seguro y con RBAC granular, aunque requiere configuración adicional de identidades administradas en contenedores. | **Secret Manager:**<br>Simple y eficaz, integrado con Cloud IAM, costo por millón de operaciones. |
 | **Observabilidad y Trazabilidad** | **CloudWatch Logs/Metrics + AWS X-Ray:**<br>Recolección nativa mediante driver `awslogs` en Fargate. Trazabilidad distribuida de microservicios con correlación por `x-correlation-id`. | **Azure Monitor & Application Insights:**<br>Muy potente para telemetría, pero la instrumentación Java suele requerir agentes dedicados más pesados. | **Cloud Logging & Cloud Trace:**<br>Visualización limpia y rápida, pero menos integrada con arquitecturas híbridas RabbitMQ. |
@@ -51,7 +51,7 @@ Tras el análisis comparativo, se selecciona formalmente **Amazon Web Services (
    CloudFront posee un Punto de Presencia (PoP / Edge Location) en Lima, Perú, lo cual permite entregar el frontend de la web y la landing page con tiempos de carga inferiores a 80 ms para operadores logísticos locales.
 
 4. **Compatibilidad Estándar con el Ecosistema Spring Boot 3 y Angular 22:**  
-   Las librerías del AWS SDK v2 para Java se integran orgánicamente con Spring Boot para la generación de URLs prefirmadas en S3, la inyección de secretos desde Secrets Manager y la trazabilidad con AWS X-Ray.
+   Las librerías del AWS SDK v2 para Java se integran orgánicamente con Spring Boot para persistir y recuperar los comprobantes en Amazon S3 directamente desde el microservicio `expense` mediante IAM Roles (sirviéndolos a través de su endpoint autenticado), la inyección de secretos desde Secrets Manager y la trazabilidad con AWS X-Ray.
 
 ---
 
@@ -159,23 +159,22 @@ En estricta correspondencia con el patrón **Database-per-Service**, se utiliza 
 
 ---
 
-### 4.5. Almacenamiento Seguro de Evidencias (Amazon S3)
-En el entorno local, `services/expense` persiste las fotos de comprobantes en el volumen `expense-evidence-data`. En la nube, este volumen efímero se sustituye por **Amazon S3**:
+### 4.5. Almacenamiento Privado de Evidencias (Amazon S3)
+En el entorno local, `services/expense` persiste los archivos de comprobantes en el volumen `expense-evidence-data`. En la nube, este volumen local se sustituye por **Amazon S3**, funcionando exclusivamente como almacenamiento privado administrado internamente por el microservicio `expense`:
 
 1. **Configuración del Bucket Privado:**
    - Nombre: `s3-rinde-expenses-evidence-prod`.
-   - **Block Public Access:** Activado en sus 4 niveles (sin acceso público bajo ninguna circunstancia).
-   - Cifrado por defecto: SSE-S3 (Server-Side Encryption con llaves AES-256 administradas).
-2. **Flujo de Carga y Descarga mediante Pre-signed URLs:**
-   - **Subida de Evidencia (`POST /api/v1/expenses/{id}/evidences`):**
-     1. El cliente móvil o web envía el archivo multipart al microservicio `expense` con su token Bearer.
-     2. El microservicio valida los permisos del usuario y el estado del gasto (`REGISTERED` o `PENDING_SUPPORT`).
-     3. El microservicio genera un Object Key único con formato: `tenants/{tenantId}/expenses/{expenseId}/{uuid}.webp`.
-     4. `expense` transfiere el archivo de forma segura a S3 usando el SDK de AWS autenticado con su rol IAM, o emite una Pre-signed URL de subida (`PUT`) con caducidad de 10 minutos.
-   - **Lectura Segura (`GET /api/v1/expenses/{id}/evidences/{evidenceId}/content`):**
-     1. El revisor (auditor) solicita la evidencia.
-     2. `expense` valida que el usuario pertenezca al `tenantId` correspondiente.
-     3. El microservicio genera una **Pre-signed URL** temporal con vigencia de 5 minutos y responde un código de redirección temporal `307 Temporary Redirect` hacia S3, garantizando que el bucket permanezca 100% privado.
+   - **Block Public Access:** Activado en sus 4 niveles (sin acceso público bajo ninguna circunstancia ni URLs directas hacia el cliente).
+   - **Cifrado y Control de Acceso IAM:** Cifrado por defecto SSE-S3 (AES-256) y política de acceso restringida exclusivamente al **ECS Task Role** del microservicio `expense` (`s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`) a través de un VPC Gateway Endpoint para S3.
+2. **Flujo de Carga y Lectura Autenticada a través de `expense`:**
+   - **Subida de Evidencia (`POST /api/v1/expenses/{expenseId}/evidences`):**
+     1. El cliente móvil del conductor envía el archivo (`multipart/form-data`, campo `file`; JPEG, PNG, WEBP o PDF, hasta 5 MB según `RINDE_EVIDENCE_MAX_SIZE_BYTES`) a través del Gateway con su token Bearer (`DRIVER`).
+     2. El microservicio `expense` valida el JWT, comprueba empresa (`tenantId`) y propiedad del gasto, verifica formato y tamaño, y calcula la huella **SHA-256** de integridad.
+     3. `expense` almacena el objeto de forma privada en Amazon S3 bajo la clave `tenants/{tenantId}/expenses/{expenseId}/{evidenceId}` usando el AWS SDK v2 y su IAM Role, transiciona el gasto a `REGISTERED` y responde `201 Created` devolviendo el enlace relativo `contentUrl` (`/api/v1/expenses/{expenseId}/evidences/{evidenceId}/content`).
+   - **Lectura Segura (`GET /api/v1/expenses/{expenseId}/evidences/{evidenceId}/content`):**
+     1. El administrador (`ADMINISTRATOR`), responsable de operaciones (`OPERATIONS_MANAGER`) o conductor dueño del gasto (`DRIVER`) solicita la evidencia enviando la cabecera `Authorization: Bearer <jwt>` (en la web se solicita como `blob` con cabecera `Accept: */*` o `image/*`).
+     2. El microservicio `expense` valida el JWT, la pertenencia a la empresa (`tenantId`) y el rol o propiedad sobre el gasto.
+     3. `expense` recupera el objeto internamente desde S3, verifica la huella SHA-256 almacenada y entrega el flujo binario directamente en la respuesta HTTP con su `Content-Type`, `Content-Disposition: inline; filename="..."` y `Cache-Control: no-store`. De este modo la lectura sigue pasando íntegramente por `expense`, sin redirecciones 307 ni URLs prefirmadas expuestas al cliente.
 
 ---
 
@@ -306,6 +305,6 @@ El APK del conductor (`apps/mobile`), compilado bajo el módulo Android, cuenta 
 1. **Viabilidad Técnica y Operativa:**  
    La arquitectura diseñada sobre AWS garantiza una transición transparente desde el entorno Docker Compose local hacia un esquema de producción resiliente, preservando intactos los contratos HTTP del API Gateway y la topología de eventos RabbitMQ.
 2. **Cumplimiento de Seguridad y Normativa:**  
-   El uso de Pre-signed URLs en S3 y la obligatoriedad de HTTPS para el APK de Android aseguran el cumplimiento riguroso de la confidencialidad de comprobantes contables y datos operativos de transporte.
+   El almacenamiento privado en S3 mediado exclusivamente por el microservicio `expense` (mediante `GET /api/v1/expenses/{expenseId}/evidences/{evidenceId}/content` con validación de JWT, empresa y rol) y la obligatoriedad de HTTPS para el APK de Android aseguran el cumplimiento riguroso de la confidencialidad de comprobantes contables y datos operativos de transporte.
 3. **Control Presupuestario:**  
    El costo estimado mensual de **USD 297,00 (por verificar)** resulta altamente competitivo y sustentable para una flota inicial en fase de piloto comercial, con posibilidad de optimización mediante Savings Plans o instancias reservadas.
