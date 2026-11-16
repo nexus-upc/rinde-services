@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.nexus.rinde.notification.application.events.TripAssignedNotification;
 import com.nexus.rinde.notification.infrastructure.messaging.TripAssignedListener;
-import com.nexus.rinde.settlement.infrastructure.messaging.SettlementTripMessaging;
 import com.nexus.rinde.support.ContextDoubles;
 import com.nexus.rinde.support.ContextDoubles.Account;
 import com.nexus.rinde.support.ExpenseDouble;
@@ -30,7 +29,6 @@ public class SetupSteps {
   private final ContextDoubles doubles;
   private final ExpenseDouble expenses;
   private final TestTokens tokens;
-  private final SettlementTripMessaging settlementMessaging;
   private final TripAssignedListener tripAssignedListener;
 
   public SetupSteps(
@@ -38,13 +36,11 @@ public class SetupSteps {
       ContextDoubles doubles,
       ExpenseDouble expenses,
       TestTokens tokens,
-      SettlementTripMessaging settlementMessaging,
       TripAssignedListener tripAssignedListener) {
     this.context = context;
     this.doubles = doubles;
     this.expenses = expenses;
     this.tokens = tokens;
-    this.settlementMessaging = settlementMessaging;
     this.tripAssignedListener = tripAssignedListener;
   }
 
@@ -148,16 +144,13 @@ public class SetupSteps {
     doubles.startTrip(tripId(tripName), Instant.now());
   }
 
-  /** Finalizar el viaje publica trip.finished y el consumidor de Settlement abre la liquidación. */
+  /** Finaliza el viaje. La liquidación la crea el microservicio Settlement, aquí no se abre. */
   @Dado("que el conductor {string} finaliza el viaje {string}")
   public void theDriverFinishesTrip(String driverEmail, String tripName) {
     UUID tripId = tripId(tripName);
     doubles.finishTrip(tripId, Instant.now());
     TripSummary trip = doubles.trip(tripId).orElseThrow();
     assertThat(trip.driverId()).isEqualTo(UUID.fromString(context.userIdOf(driverEmail)));
-    settlementMessaging.receive(
-        new SettlementTripMessaging.Event(
-            UUID.randomUUID(), doubles.tenantOfTrip(tripId), tripId, trip.driverId()));
   }
 
   // Gastos

@@ -51,12 +51,19 @@ spring:
               order: 4
               predicates:
                 - Path=/api/internal/**
-            # Settlement y los adelantos siguen en el monolito; van antes que el resto de /trips.
-            - id: monolith-trip-children
-              uri: ${MONOLITH_URL:http://localhost:8080}
+            # Settlement es ya un microservicio separado; va antes que /trips genérico.
+            - id: settlement-service
+              uri: ${SETTLEMENT_SERVICE_URL:http://localhost:8086}
               order: 5
               predicates:
-                - Path=/api/v1/trips/*/settlement/**,/api/v1/trips/*/advances,/api/v1/trips/*/advances/**
+                - Path=/api/v1/settlements,/api/v1/settlements/**,/api/v1/trips/*/settlement,/api/v1/trips/*/advances,/api/v1/trips/*/advances/**
+            - id: settlement-api-docs
+              uri: ${SETTLEMENT_SERVICE_URL:http://localhost:8086}
+              order: 5
+              predicates:
+                - Path=/v3/api-docs/settlement
+              filters:
+                - RewritePath=/v3/api-docs/settlement,/v3/api-docs
             - id: expense-service
               uri: ${EXPENSE_SERVICE_URL:http://localhost:8084}
               order: 6
@@ -170,6 +177,8 @@ springdoc:
         url: /v3/api-docs/incident
       - name: Suscripciones
         url: /v3/api-docs/subscription
+      - name: Liquidaciones
+        url: /v3/api-docs/settlement
       - name: core
         url: /v3/api-docs/core
 

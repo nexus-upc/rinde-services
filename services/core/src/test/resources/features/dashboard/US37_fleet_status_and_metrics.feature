@@ -42,15 +42,8 @@ Característica: US37 Consultar estado de flota y métricas operativas
     Y la respuesta incluye el campo "pendingExpenses" con el valor "1"
     Y la respuesta incluye el campo "partial" con el valor "false"
 
-  Escenario: Las liquidaciones pendientes de cierre se cuentan al terminar un viaje
-    Dado que el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
-    Y que el administrador asigna el viaje "viaje" al vehículo "camión" y al conductor "luis@andes.pe"
-    Y que el conductor "luis@andes.pe" inició sesión
-    Y que el conductor inicia el viaje "viaje"
-    Y que el conductor "luis@andes.pe" finaliza el viaje "viaje"
-    Cuando el administrador consulta las métricas operativas
-    Entonces la respuesta tiene código 200
-    Y la respuesta incluye el campo "pendingSettlements" con el valor "1"
+  # El escenario de liquidaciones pendientes vive ahora en services/settlement; aquí Dashboard
+  # consume a Settlement por HTTP y en Cucumber de core no hay servicio para responder.
 
   Escenario: Incidencias abiertas disponibles
     Dado que la empresa tiene 2 incidencias abiertas

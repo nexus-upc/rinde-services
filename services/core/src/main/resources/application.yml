@@ -84,6 +84,8 @@ rinde:
   incident:
     remote-enabled: ${RINDE_INCIDENT_REMOTE_ENABLED:true}
     base-url: ${INCIDENT_SERVICE_URL:http://localhost:8085}
+  settlement:
+    base-url: ${SETTLEMENT_SERVICE_URL:http://localhost:8086}
   notification:
     retry:
       # Esperas en minutos antes de cada reintento; tras la quinta falla el aviso queda FAILED.

@@ -1,5 +1,7 @@
 package com.nexus.rinde.dashboard.application.internal.queryservices;
 
+import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardSettlementClient;
+import com.nexus.rinde.dashboard.application.internal.outboundservices.acl.DashboardSettlementClient.SettlementSummary;
 import com.nexus.rinde.dashboard.domain.model.queries.GetFleetStatusQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetOperationalMetricsQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetTripSummaryQuery;
@@ -16,8 +18,6 @@ import com.nexus.rinde.fleet.interfaces.acl.FleetContextFacade;
 import com.nexus.rinde.fleet.interfaces.acl.FleetDriverSummary;
 import com.nexus.rinde.fleet.interfaces.acl.FleetVehicleSummary;
 import com.nexus.rinde.incident.interfaces.acl.IncidentContextFacade;
-import com.nexus.rinde.settlement.interfaces.acl.SettlementSummary;
-import com.nexus.rinde.settlement.interfaces.acl.SettlementContextFacade;
 import com.nexus.rinde.shared.domain.exceptions.BusinessRuleException;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import com.nexus.rinde.trip.interfaces.acl.TripContextFacade;
@@ -38,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DashboardQueryServiceImpl implements DashboardQueryService {
 
   private final TripContextFacade tripFacade;
-  private final SettlementContextFacade settlementFacade;
+  private final DashboardSettlementClient settlementClient;
   private final ExpenseContextFacade expenseFacade;
   private final FleetContextFacade fleetFacade;
   private final IncidentContextFacade incidentFacade;
@@ -46,13 +46,13 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
 
   public DashboardQueryServiceImpl(
       TripContextFacade tripFacade,
-      SettlementContextFacade settlementFacade,
+      DashboardSettlementClient settlementClient,
       ExpenseContextFacade expenseFacade,
       FleetContextFacade fleetFacade,
       IncidentContextFacade incidentFacade,
       Clock clock) {
     this.tripFacade = tripFacade;
-    this.settlementFacade = settlementFacade;
+    this.settlementClient = settlementClient;
     this.expenseFacade = expenseFacade;
     this.fleetFacade = fleetFacade;
     this.incidentFacade = incidentFacade;
@@ -83,8 +83,13 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
             .findFirst()
             .orElse("PEN");
 
-    SettlementSummary settlement =
-        settlementFacade.findByTripIdAndTenantId(query.tripId(), query.tenantId()).orElse(null);
+    SettlementSummary settlement;
+    try {
+      settlement =
+          settlementClient.findByTripIdAndTenantId(query.tripId(), query.tenantId()).orElse(null);
+    } catch (RemoteServiceUnavailableException ex) {
+      settlement = null;
+    }
 
     return new TripSummaryResource(
         trip.id(),
@@ -200,7 +205,12 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
                     TreeMap::new,
                     Collectors.reducing(BigDecimal.ZERO, ExpenseSummary::amount, BigDecimal::add)));
 
-    int pendingSettlements = (int) settlementFacade.countOpenByTenantId(tenantId);
+    int pendingSettlements;
+    try {
+      pendingSettlements = (int) settlementClient.countOpenByTenantId(tenantId);
+    } catch (RemoteServiceUnavailableException ex) {
+      pendingSettlements = 0;
+    }
     OperationalMetricsResource.Incidents incidents = countOpenIncidents(tenantId);
 
     return new OperationalMetricsResource(
