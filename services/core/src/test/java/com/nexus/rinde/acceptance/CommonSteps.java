@@ -33,4 +33,15 @@ public class CommonSteps {
   public void theResponseHasField(String field, String expected) throws Exception {
     assertThat(context.body().get(field).asText()).isEqualTo(expected);
   }
+
+  @Y("la respuesta incluye en {string} el campo {string} con el valor {string}")
+  public void theResponseHasNestedField(String parent, String field, String expected)
+      throws Exception {
+    assertThat(context.body().get(parent).get(field).asText()).isEqualTo(expected);
+  }
+
+  @Y("la respuesta contiene {int} elementos")
+  public void theResponseContainsItems(int expected) throws Exception {
+    assertThat(context.body().size()).isEqualTo(expected);
+  }
 }

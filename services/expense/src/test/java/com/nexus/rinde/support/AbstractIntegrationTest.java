@@ -27,6 +27,7 @@ public abstract class AbstractIntegrationTest {
   @DynamicPropertySource
   static void databaseProperties(DynamicPropertyRegistry registry) {
     TestDatabase.registerUrl(registry);
+    TestEvidenceStorage.registerPath(registry);
     registry.add("rinde.iam.service-url", WireMockServices::baseUrl);
     registry.add("rinde.trip.service-url", WireMockServices::baseUrl);
     registry.add("spring.rabbitmq.listener.simple.auto-startup", () -> false);

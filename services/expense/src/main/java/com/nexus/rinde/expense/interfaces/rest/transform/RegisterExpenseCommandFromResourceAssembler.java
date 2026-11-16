@@ -13,9 +13,6 @@ public final class RegisterExpenseCommandFromResourceAssembler {
   public static RegisterExpenseCommand toCommand(
       UUID tenantId, UUID tripId, UUID driverId, RegisterExpenseResource resource) {
     Money money = new Money(resource.amount(), resource.currency());
-    String imageUrl = resource.evidence() != null ? resource.evidence().imageUrl() : null;
-    Long fileSizeBytes = resource.evidence() != null ? resource.evidence().fileSizeBytes() : null;
-
     return new RegisterExpenseCommand(
         tenantId,
         tripId,
@@ -23,8 +20,6 @@ public final class RegisterExpenseCommandFromResourceAssembler {
         resource.category(),
         money,
         resource.expenseDate(),
-        resource.idempotencyKey(),
-        imageUrl,
-        fileSizeBytes);
+        resource.idempotencyKey());
   }
 }

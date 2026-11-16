@@ -26,6 +26,16 @@ Característica: US20 Ciclo completo del viaje contra Fleet real
     Entonces la respuesta tiene código 200
     Y el viaje queda en estado "FINISHED"
 
+  Escenario: El conductor finaliza el viaje en ruta aunque la suscripción de la empresa esté restringida
+    Dado que el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
+    Y que el administrador asigna el viaje "viaje" con el vehículo de Fleet "camión" y el conductor de Fleet "Luis Quispe"
+    Y que el conductor "luis@andes.pe" inició sesión
+    Y que el conductor "luis@andes.pe" inicia el viaje "viaje"
+    Y que la suscripción de la empresa con RUC "20123456789" está restringida
+    Cuando el conductor "luis@andes.pe" finaliza el viaje "viaje"
+    Entonces la respuesta tiene código 200
+    Y el viaje queda en estado "FINISHED"
+
   Escenario: El conductor ve el viaje asignado en su lista
     Dado que el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
     Y que el administrador asigna el viaje "viaje" con el vehículo de Fleet "camión" y el conductor de Fleet "Luis Quispe"

@@ -1,6 +1,7 @@
 package com.nexus.rinde.support;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -11,9 +12,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 
 /** Cliente de pruebas para los endpoints de Expense & Evidence. */
 public class ExpenseApi {
@@ -33,9 +36,7 @@ public class ExpenseApi {
       BigDecimal amount,
       String currency,
       LocalDate expenseDate,
-      String idempotencyKey,
-      String imageUrl,
-      Long fileSizeBytes)
+      String idempotencyKey)
       throws Exception {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("category", category);
@@ -43,12 +44,6 @@ public class ExpenseApi {
     body.put("currency", currency != null ? currency : "PEN");
     body.put("expenseDate", expenseDate);
     body.put("idempotencyKey", idempotencyKey);
-    if (imageUrl != null && !imageUrl.isBlank()) {
-      Map<String, Object> evidence = new LinkedHashMap<>();
-      evidence.put("imageUrl", imageUrl);
-      evidence.put("fileSizeBytes", fileSizeBytes != null ? fileSizeBytes : 1024L);
-      body.put("evidence", evidence);
-    }
     return perform(post("/api/v1/trips/" + tripId + "/expenses"), token, body);
   }
 
@@ -75,11 +70,26 @@ public class ExpenseApi {
     return mockMvc.perform(authorized(get("/api/v1/expenses/" + expenseId), token));
   }
 
-  public ResultActions presignedUrl(String token) throws Exception {
+  /** Sube el comprobante en el campo file, como lo hace el cliente multipart. */
+  public ResultActions uploadEvidence(String token, String expenseId, String fileName, byte[] content)
+      throws Exception {
+    MockMultipartHttpServletRequestBuilder request =
+        multipart("/api/v1/expenses/" + expenseId + "/evidences")
+            .file(
+                new MockMultipartFile(
+                    "file", fileName, EvidenceFiles.contentTypeOf(fileName), content));
+    return mockMvc.perform(authorized(request, token));
+  }
+
+  /** Envía la solicitud multipart sin el campo file. */
+  public ResultActions uploadWithoutFile(String token, String expenseId) throws Exception {
     return mockMvc.perform(
-        authorized(post("/api/v1/expenses/evidences/presigned-url"), token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{}"));
+        authorized(multipart("/api/v1/expenses/" + expenseId + "/evidences"), token));
+  }
+
+  /** Lee el archivo de un comprobante por la ruta contentUrl que devuelve el gasto. */
+  public ResultActions content(String token, String contentUrl) throws Exception {
+    return mockMvc.perform(authorized(get(contentUrl), token));
   }
 
   public ResultActions sync(String token, java.util.List<?> items) throws Exception {

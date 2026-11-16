@@ -13,13 +13,7 @@ public final class ExpenseResourceFromEntityAssembler {
   public static ExpenseResource toResource(Expense expense) {
     EvidenceResource evidenceResource = null;
     if (expense.getEvidence() != null) {
-      Evidence evidence = expense.getEvidence();
-      evidenceResource =
-          new EvidenceResource(
-              evidence.getId(),
-              evidence.getImageUrl(),
-              evidence.getFileSizeBytes(),
-              evidence.getUploadedAt());
+      evidenceResource = toEvidenceResource(expense, expense.getEvidence());
     }
 
     return new ExpenseResource(
@@ -38,5 +32,21 @@ public final class ExpenseResourceFromEntityAssembler {
         evidenceResource,
         expense.getCreatedAt(),
         expense.getUpdatedAt());
+  }
+
+  /** La ruta de contenido es relativa y exige JWT; no es una URL pública. */
+  private static EvidenceResource toEvidenceResource(Expense expense, Evidence evidence) {
+    String contentUrl =
+        evidence.getStorageKey() != null
+            ? "/api/v1/expenses/%s/evidences/%s/content".formatted(expense.getId(), evidence.getId())
+            : null;
+    return new EvidenceResource(
+        evidence.getId(),
+        evidence.getFileName(),
+        evidence.getContentType(),
+        evidence.getFileSizeBytes(),
+        evidence.getSha256(),
+        contentUrl,
+        evidence.getUploadedAt());
   }
 }

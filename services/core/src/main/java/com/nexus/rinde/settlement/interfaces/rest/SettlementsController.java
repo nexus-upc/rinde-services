@@ -3,17 +3,15 @@ package com.nexus.rinde.settlement.interfaces.rest;
 import com.nexus.rinde.settlement.domain.model.aggregates.Settlement;
 import com.nexus.rinde.settlement.domain.model.commands.CloseSettlementCommand;
 import com.nexus.rinde.settlement.domain.model.commands.RecalculateSettlementCommand;
-import com.nexus.rinde.settlement.domain.model.commands.RegisterAdvanceCommand;
 import com.nexus.rinde.settlement.domain.model.queries.ExportSettlementQuery;
 import com.nexus.rinde.settlement.domain.model.queries.GetSettlementByIdQuery;
 import com.nexus.rinde.settlement.domain.model.queries.GetSettlementByTripIdQuery;
 import com.nexus.rinde.settlement.domain.model.queries.SettlementExport;
 import com.nexus.rinde.settlement.domain.model.valueobjects.ApprovedExpense;
+import com.nexus.rinde.settlement.domain.model.valueobjects.SettlementRecalculation;
 import com.nexus.rinde.settlement.domain.services.SettlementCommandService;
 import com.nexus.rinde.settlement.domain.services.SettlementQueryService;
-import com.nexus.rinde.settlement.interfaces.rest.resources.RegisterAdvanceResource;
 import com.nexus.rinde.settlement.interfaces.rest.resources.SettlementResource;
-import com.nexus.rinde.settlement.interfaces.rest.transform.RegisterAdvanceCommandFromResourceAssembler;
 import com.nexus.rinde.settlement.interfaces.rest.transform.SettlementResourceFromEntityAssembler;
 import org.springframework.http.HttpHeaders;
 import com.nexus.rinde.shared.infrastructure.security.TenantContext;
@@ -23,7 +21,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -32,14 +29,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Operaciones de consulta y gestión de liquidaciones de viaje. */
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-@Tag(name = "Settlements", description = "Liquidaciones de viaje y anticipos")
+@Tag(name = "Settlements", description = "Liquidaciones de viaje")
 @ApiResponses({
   @ApiResponse(
       responseCode = "401",
@@ -66,37 +62,6 @@ public class SettlementsController {
       SettlementQueryService settlementQueryService) {
     this.settlementCommandService = settlementCommandService;
     this.settlementQueryService = settlementQueryService;
-  }
-
-  @PostMapping("/api/v1/settlements/advances")
-  @PreAuthorize("hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')")
-  @Operation(
-      summary = "Registrar anticipo al conductor (US35)",
-      description = "Registra el monto anticipado al conductor para cubrir los gastos del viaje.")
-  @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Anticipo registrado exitosamente"),
-    @ApiResponse(
-        responseCode = "400",
-        description = "Monto menor o igual a cero o datos inválidos",
-        content =
-            @Content(
-                mediaType = "application/problem+json",
-                schema = @Schema(implementation = ProblemDetail.class))),
-    @ApiResponse(
-        responseCode = "404",
-        description = "No existe liquidación para el viaje indicado",
-        content =
-            @Content(
-                mediaType = "application/problem+json",
-                schema = @Schema(implementation = ProblemDetail.class)))
-  })
-  public ResponseEntity<SettlementResource> registerAdvance(
-      @Valid @RequestBody RegisterAdvanceResource resource) {
-    RegisterAdvanceCommand command =
-        RegisterAdvanceCommandFromResourceAssembler.toCommand(
-            TenantContext.tenantId(), TenantContext.userId(), resource);
-    Settlement settlement = settlementCommandService.handle(command);
-    return ResponseEntity.ok(SettlementResourceFromEntityAssembler.toResource(settlement));
   }
 
   @GetMapping("/api/v1/settlements/{id}")
@@ -148,9 +113,13 @@ public class SettlementsController {
   @Operation(
       summary = "Recalcular totales de la liquidación (US25)",
       description =
-          "Vuelve a sumar los gastos aprobados del viaje y actualiza el balance del anticipo.")
+          "Vuelve a sumar los gastos aprobados del viaje y actualiza el balance del anticipo. La"
+              + " respuesta indica cuántos gastos siguen sin revisar, para que el responsable los"
+              + " revise antes de cerrar.")
   @ApiResponses({
-    @ApiResponse(responseCode = "200", description = "Liquidación recalculada"),
+    @ApiResponse(
+        responseCode = "200",
+        description = "Liquidación recalculada, con pendingExpenseCount"),
     @ApiResponse(
         responseCode = "404",
         description = "Liquidación no encontrada",
@@ -167,10 +136,12 @@ public class SettlementsController {
                 schema = @Schema(implementation = ProblemDetail.class)))
   })
   public ResponseEntity<SettlementResource> recalculate(@PathVariable UUID id) {
-    Settlement settlement =
+    SettlementRecalculation result =
         settlementCommandService.handle(
             new RecalculateSettlementCommand(TenantContext.tenantId(), id));
-    return ResponseEntity.ok(SettlementResourceFromEntityAssembler.toResource(settlement));
+    return ResponseEntity.ok(
+        SettlementResourceFromEntityAssembler.toResource(
+            result.settlement(), result.pendingExpenseCount()));
   }
 
   @PostMapping("/api/v1/settlements/{id}/close")
@@ -179,7 +150,8 @@ public class SettlementsController {
       summary = "Cerrar la liquidación (US26)",
       description =
           "Cierra la liquidación: suma los gastos aprobados, calcula el balance y publica"
-              + " SettlementClosed para que Trip la marque como liquidada y Expense bloquee los gastos.")
+              + " SettlementClosed para que Trip la marque como liquidada y Expense bloquee los gastos."
+              + " No se cierra mientras haya gastos sin aprobar ni observar.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Liquidación cerrada"),
     @ApiResponse(
@@ -191,7 +163,7 @@ public class SettlementsController {
                 schema = @Schema(implementation = ProblemDetail.class))),
     @ApiResponse(
         responseCode = "409",
-        description = "La liquidación ya fue cerrada",
+        description = "La liquidación ya fue cerrada o tiene gastos sin revisar",
         content =
             @Content(
                 mediaType = "application/problem+json",

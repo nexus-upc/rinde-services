@@ -43,10 +43,7 @@ class ExpenseSettlementMessagingTest extends AbstractIntegrationTest {
             ExpenseCategory.FOOD,
             Money.of(new BigDecimal("45.00"), "PEN"),
             LocalDate.now(),
-            "KEY-AMQP-01",
-            null,
-            null,
-            Instant.now());
+            "KEY-AMQP-01");
     expenseRepository.save(expense);
     assertThat(expense.isLocked()).isFalse();
 

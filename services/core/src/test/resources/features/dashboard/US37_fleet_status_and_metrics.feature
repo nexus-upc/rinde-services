@@ -31,6 +31,52 @@ Característica: US37 Consultar estado de flota y métricas operativas
     Y la respuesta incluye el campo "totalTrips" con el valor "1"
     Y la respuesta incluye el campo "scheduledTrips" con el valor "1"
 
+  Escenario: Las métricas del periodo suman solo los gastos aprobados dentro del rango
+    Dado que el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
+    Y que existe un gasto aprobado de "120.00" soles con fecha "HOY-3" en el viaje "viaje"
+    Y que existe un gasto aprobado de "80.00" soles con fecha "HOY-40" en el viaje "viaje"
+    Y que el conductor registró un gasto "pendiente" de tipo "TOLL" por el monto "30.00" con clave "KEY-PERIODO-2026" en el viaje "viaje"
+    Cuando el administrador consulta las métricas operativas del periodo "HOY-7" a "HOY"
+    Entonces la respuesta tiene código 200
+    Y la respuesta incluye en "approvedExpenseTotals" el campo "PEN" con el valor "120.0"
+    Y la respuesta incluye el campo "pendingExpenses" con el valor "1"
+    Y la respuesta incluye el campo "partial" con el valor "false"
+
+  Escenario: Las liquidaciones pendientes de cierre se cuentan al terminar un viaje
+    Dado que el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
+    Y que el administrador asigna el viaje "viaje" al vehículo "camión" y al conductor "luis@andes.pe"
+    Y que el conductor "luis@andes.pe" inició sesión
+    Y que el conductor inicia el viaje "viaje"
+    Y que el conductor "luis@andes.pe" finaliza el viaje "viaje"
+    Cuando el administrador consulta las métricas operativas
+    Entonces la respuesta tiene código 200
+    Y la respuesta incluye el campo "pendingSettlements" con el valor "1"
+
+  Escenario: Incidencias abiertas disponibles
+    Dado que la empresa tiene 2 incidencias abiertas
+    Cuando el administrador consulta las métricas operativas
+    Entonces la respuesta tiene código 200
+    Y la respuesta incluye en "incidents" el campo "openCount" con el valor "2"
+    Y la respuesta incluye en "incidents" el campo "source" con el valor "AVAILABLE"
+    Y la respuesta incluye el campo "partial" con el valor "false"
+
+  Escenario: Si el servicio de incidencias no responde, el resto de las métricas se entrega
+    Dado que el servicio de incidencias no responde
+    Cuando el administrador consulta las métricas operativas
+    Entonces la respuesta tiene código 200
+    Y la respuesta incluye en "incidents" el campo "source" con el valor "UNAVAILABLE"
+    Y la respuesta incluye el campo "partial" con el valor "true"
+    Y la respuesta incluye el campo "totalTrips" con el valor "0"
+
+  Escenario: El periodo con fecha final anterior a la inicial se rechaza
+    Cuando el administrador consulta las métricas operativas del periodo "HOY" a "HOY-7"
+    Entonces la respuesta tiene código 400
+    Y el mensaje de error es "La fecha final no puede ser anterior a la inicial."
+
+  Escenario: El periodo con formato de fecha inválido se rechaza
+    Cuando el administrador consulta las métricas operativas del periodo "2026/11/01" a "HOY"
+    Entonces la respuesta tiene código 400
+
   Escenario: Estado de flota requiere autenticación
     Cuando una persona sin token consulta el estado de la flota
     Entonces la respuesta tiene código 401

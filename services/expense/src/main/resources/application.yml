@@ -22,6 +22,11 @@ spring:
   # El esquema expense se migra con Flyway desde ExpenseFlywayConfiguration.
   flyway:
     enabled: false
+  servlet:
+    multipart:
+      # Límite del contenedor. El comprobante se valida después con rinde.evidence.max-size-bytes.
+      max-file-size: 10MB
+      max-request-size: 10MB
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -44,6 +49,12 @@ rinde:
     service-url: ${IAM_SERVICE_URL:http://localhost:8081}
   trip:
     service-url: ${TRIP_SERVICE_URL:http://localhost:8082}
+  evidence:
+    # Tamaño máximo de cada comprobante en bytes (5 MB por defecto).
+    max-size-bytes: ${RINDE_EVIDENCE_MAX_SIZE_BYTES:5242880}
+    storage:
+      # Carpeta de los comprobantes. En Docker es un volumen; no se expone por HTTP.
+      local-path: ${RINDE_EVIDENCE_STORAGE_PATH:./data/evidences}
 
 springdoc:
   api-docs:

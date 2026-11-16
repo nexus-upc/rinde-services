@@ -4,26 +4,32 @@ import com.nexus.rinde.expense.domain.model.aggregates.Expense;
 import com.nexus.rinde.expense.domain.model.commands.AttachEvidenceCommand;
 import com.nexus.rinde.expense.domain.model.commands.RegisterExpenseCommand;
 import com.nexus.rinde.expense.domain.model.commands.UpdateExpenseStatusCommand;
+import com.nexus.rinde.expense.domain.model.valueobjects.EvidenceFile;
 import com.nexus.rinde.expense.domain.model.valueobjects.ExpenseStatus;
 import com.nexus.rinde.expense.domain.model.valueobjects.RejectedExpense;
 import com.nexus.rinde.expense.domain.model.valueobjects.SyncExpensesResult;
 import com.nexus.rinde.expense.domain.model.valueobjects.SyncRejectionCode;
+import com.nexus.rinde.expense.domain.services.EvidenceStorage;
 import com.nexus.rinde.expense.domain.services.ExpenseCommandService;
 import com.nexus.rinde.expense.domain.services.TripStatusService;
 import com.nexus.rinde.expense.infrastructure.persistence.jpa.repositories.ExpenseRepository;
 import com.nexus.rinde.shared.domain.exceptions.BusinessRuleException;
 import com.nexus.rinde.shared.domain.exceptions.ConflictException;
+import com.nexus.rinde.shared.domain.exceptions.ForbiddenOperationException;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** Coordina la creación, auditoría y evidencia de gastos con su persistencia. */
@@ -34,19 +40,25 @@ public class ExpenseCommandServiceImpl implements ExpenseCommandService {
 
   private final ExpenseRepository expenseRepository;
   private final TripStatusService tripStatusService;
+  private final EvidenceStorage evidenceStorage;
   private final Clock clock;
   private final TransactionTemplate itemTransaction;
+  private final long maxEvidenceSizeBytes;
 
   public ExpenseCommandServiceImpl(
       ExpenseRepository expenseRepository,
       TripStatusService tripStatusService,
+      EvidenceStorage evidenceStorage,
       Clock clock,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      @Value("${rinde.evidence.max-size-bytes:5242880}") long maxEvidenceSizeBytes) {
     this.expenseRepository = expenseRepository;
     this.tripStatusService = tripStatusService;
+    this.evidenceStorage = evidenceStorage;
     this.clock = clock;
     this.itemTransaction = new TransactionTemplate(transactionManager);
     this.itemTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.maxEvidenceSizeBytes = maxEvidenceSizeBytes;
   }
 
   @Override
@@ -66,10 +78,7 @@ public class ExpenseCommandServiceImpl implements ExpenseCommandService {
             command.category(),
             command.amount(),
             command.expenseDate(),
-            command.idempotencyKey(),
-            command.imageUrl(),
-            command.fileSizeBytes(),
-            clock.instant());
+            command.idempotencyKey());
 
     return expenseRepository.saveAndFlush(expense);
   }
@@ -91,6 +100,10 @@ public class ExpenseCommandServiceImpl implements ExpenseCommandService {
     return expenseRepository.saveAndFlush(expense);
   }
 
+  /**
+   * Guarda el archivo del comprobante y lo asocia al gasto. Solo el conductor que registró el gasto
+   * puede adjuntarlo. Al reemplazar, el archivo anterior se borra tras confirmar la transacción.
+   */
   @Override
   @Transactional
   public Expense handle(AttachEvidenceCommand command) {
@@ -98,9 +111,22 @@ public class ExpenseCommandServiceImpl implements ExpenseCommandService {
         expenseRepository
             .findByIdAndTenantId(command.expenseId(), command.tenantId())
             .orElseThrow(() -> new ResourceNotFoundException("El gasto no existe."));
+    if (!expense.isByDriver(command.uploadedBy())) {
+      throw new ForbiddenOperationException(
+          "Solo el conductor que registró el gasto puede adjuntar su comprobante.");
+    }
+    expense.ensureNotLocked();
 
-    expense.attachEvidence(command.imageUrl(), command.fileSizeBytes(), clock.instant());
-    return expenseRepository.saveAndFlush(expense);
+    EvidenceFile file =
+        EvidenceFile.inspect(command.fileName(), command.content(), maxEvidenceSizeBytes);
+    String storageKey = command.tenantId() + "/" + expense.getId() + "/" + UUID.randomUUID();
+    evidenceStorage.save(storageKey, command.content());
+
+    String previousKey =
+        expense.attachEvidence(file, storageKey, command.uploadedBy(), clock.instant());
+    Expense saved = expenseRepository.saveAndFlush(expense);
+    deleteAfterCommit(previousKey);
+    return saved;
   }
 
   /**
@@ -162,10 +188,7 @@ public class ExpenseCommandServiceImpl implements ExpenseCommandService {
               cmd.category(),
               cmd.amount(),
               cmd.expenseDate(),
-              cmd.idempotencyKey(),
-              cmd.imageUrl(),
-              cmd.fileSizeBytes(),
-              clock.instant());
+              cmd.idempotencyKey());
       return ItemOutcome.synchronizedWith(expenseRepository.saveAndFlush(expense));
     } catch (BusinessRuleException | ConflictException ex) {
       return ItemOutcome.rejected(
@@ -211,6 +234,24 @@ public class ExpenseCommandServiceImpl implements ExpenseCommandService {
       case TRIP_SETTLED -> "El viaje ya fue liquidado.";
       default -> "El viaje todavía no ha iniciado.";
     };
+  }
+
+  /** Borra el archivo reemplazado solo después de confirmar el cambio en la base. */
+  private void deleteAfterCommit(String previousKey) {
+    if (previousKey == null) {
+      return;
+    }
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      evidenceStorage.delete(previousKey);
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            evidenceStorage.delete(previousKey);
+          }
+        });
   }
 
   /** Resultado de un ítem: el gasto guardado o ya existente, o bien el rechazo. */

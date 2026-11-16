@@ -36,10 +36,7 @@ class InternalExpensesControllerIntegrationTest extends AbstractIntegrationTest 
             ExpenseCategory.FUEL,
             Money.of(new BigDecimal("150.00"), "PEN"),
             LocalDate.now(),
-            "KEY-INT-01",
-            "https://storage.rinde.pe/recibo1.jpg",
-            1024L,
-            Instant.now());
+            "KEY-INT-01");
     approvedExpense.approve(UUID.randomUUID(), Instant.now());
     expenseRepository.save(approvedExpense);
 
@@ -51,10 +48,7 @@ class InternalExpensesControllerIntegrationTest extends AbstractIntegrationTest 
             ExpenseCategory.TOLL,
             Money.of(new BigDecimal("20.00"), "PEN"),
             LocalDate.now(),
-            "KEY-INT-02",
-            null,
-            null,
-            Instant.now());
+            "KEY-INT-02");
     expenseRepository.save(pendingExpense);
 
     mockMvc

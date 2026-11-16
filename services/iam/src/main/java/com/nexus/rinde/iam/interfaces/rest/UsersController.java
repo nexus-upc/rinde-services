@@ -2,6 +2,7 @@ package com.nexus.rinde.iam.interfaces.rest;
 
 import com.nexus.rinde.iam.domain.model.aggregates.User;
 import com.nexus.rinde.iam.domain.model.queries.GetUsersByTenantQuery;
+import com.nexus.rinde.iam.domain.model.valueobjects.Role;
 import com.nexus.rinde.iam.domain.model.valueobjects.TenantId;
 import com.nexus.rinde.iam.domain.model.valueobjects.UserId;
 import com.nexus.rinde.iam.domain.services.UserCommandService;
@@ -12,6 +13,7 @@ import com.nexus.rinde.iam.interfaces.rest.resources.UserResource;
 import com.nexus.rinde.iam.interfaces.rest.transform.InviteUserCommandFromResourceAssembler;
 import com.nexus.rinde.iam.interfaces.rest.transform.UpdateUserCommandFromResourceAssembler;
 import com.nexus.rinde.iam.interfaces.rest.transform.UserResourceFromEntityAssembler;
+import com.nexus.rinde.shared.domain.exceptions.BusinessRuleException;
 import com.nexus.rinde.shared.infrastructure.security.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -33,16 +35,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Gestión de los usuarios de la empresa (US11). Solo el administrador puede usarla y la empresa
- * siempre sale del token, nunca de la petición.
+ * Gestión de los usuarios de la empresa (US11). El listado por rol lo puede usar también el
+ * responsable de operaciones, solo para las cuentas DRIVER. La empresa siempre sale del token.
  */
 @RestController
 @RequestMapping(value = "/api/v1/users", produces = MediaType.APPLICATION_JSON_VALUE)
-@PreAuthorize("hasRole('ADMINISTRATOR')")
-@Tag(name = "Users", description = "Usuarios de la empresa, solo para el administrador (US11)")
+@Tag(name = "Users", description = "Usuarios de la empresa (US11)")
 @ApiResponses({
   @ApiResponse(
       responseCode = "401",
@@ -53,7 +55,7 @@ import org.springframework.web.bind.annotation.RestController;
               schema = @Schema(implementation = ProblemDetail.class))),
   @ApiResponse(
       responseCode = "403",
-      description = "El usuario no es administrador",
+      description = "El rol no puede usar esta operación o pidió un rol no permitido",
       content =
           @Content(
               mediaType = "application/problem+json",
@@ -70,17 +72,32 @@ public class UsersController {
   }
 
   @GetMapping
-  @Operation(summary = "Listar los usuarios de la empresa")
-  @ApiResponse(responseCode = "200", description = "Usuarios de la empresa del administrador")
-  public List<UserResource> list() {
+  @PreAuthorize(
+      "hasRole('ADMINISTRATOR') or (hasRole('OPERATIONS_MANAGER') and #role == 'DRIVER')")
+  @Operation(
+      summary = "Listar los usuarios de la empresa, opcionalmente por rol",
+      description =
+          "El administrador lista todos los usuarios o los de un rol. El responsable de"
+              + " operaciones solo puede pedir role=DRIVER, para elegir la cuenta de un conductor.")
+  @ApiResponse(responseCode = "200", description = "Usuarios de la empresa del solicitante")
+  @ApiResponse(
+      responseCode = "400",
+      description = "El rol indicado no existe",
+      content =
+          @Content(
+              mediaType = "application/problem+json",
+              schema = @Schema(implementation = ProblemDetail.class)))
+  public List<UserResource> list(@RequestParam(name = "role", required = false) String role) {
+    Role filter = role == null ? null : parseRole(role);
     return userQueryService
-        .handle(new GetUsersByTenantQuery(new TenantId(TenantContext.tenantId())))
+        .handle(new GetUsersByTenantQuery(new TenantId(TenantContext.tenantId()), filter))
         .stream()
         .map(UserResourceFromEntityAssembler::toResource)
         .toList();
   }
 
   @PostMapping
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
   @Operation(
       summary = "Invitar a un usuario con su rol",
       description =
@@ -113,6 +130,7 @@ public class UsersController {
   }
 
   @PatchMapping("/{id}")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
   @Operation(
       summary = "Cambiar el rol o deshabilitar al usuario",
       description = "Acepta un nuevo rol, el estado DISABLED, o ambos.")
@@ -139,5 +157,13 @@ public class UsersController {
             UpdateUserCommandFromResourceAssembler.toCommand(
                 new TenantId(TenantContext.tenantId()), new UserId(id), resource));
     return UserResourceFromEntityAssembler.toResource(user);
+  }
+
+  private static Role parseRole(String role) {
+    try {
+      return Role.valueOf(role);
+    } catch (IllegalArgumentException ex) {
+      throw new BusinessRuleException("El rol indicado no existe.");
+    }
   }
 }

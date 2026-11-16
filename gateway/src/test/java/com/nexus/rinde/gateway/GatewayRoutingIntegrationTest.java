@@ -10,11 +10,14 @@ import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 import java.net.URI;
 
 import org.junit.jupiter.api.Test;
+import org.springdoc.core.properties.SwaggerUiConfigProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -25,6 +28,8 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
 
   private static final String INTERNAL_STATUS =
       "/api/internal/v1/tenants/00000000-0000-0000-0000-000000000000/status";
+
+  @Autowired private SwaggerUiConfigProperties swaggerUi;
 
   @Test
   void sendsSignInWithoutTokenToIamAndKeepsItsErrorBody() {
@@ -115,6 +120,67 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
   }
 
   @Test
+  void routesPlansSubscriptionsAndBillingToTheSubscriptionService() {
+    String token = validToken();
+    SUBSCRIPTION.stubFor(get(urlEqualTo("/api/v1/plans")).willReturn(okJson("[]")));
+    SUBSCRIPTION.stubFor(
+        get(urlEqualTo("/api/v1/subscriptions/current")).willReturn(okJson("{}")));
+
+    for (String path : new String[] {"/api/v1/plans", "/api/v1/subscriptions/current"}) {
+      webTestClient
+          .get()
+          .uri(path)
+          .header(AUTHORIZATION, "Bearer " + token)
+          .exchange()
+          .expectStatus()
+          .isOk();
+    }
+
+    SUBSCRIPTION.verify(
+        getRequestedFor(urlEqualTo("/api/v1/plans"))
+            .withHeader(AUTHORIZATION, equalTo("Bearer " + token)));
+    SUBSCRIPTION.verify(getRequestedFor(urlEqualTo("/api/v1/subscriptions/current")));
+    MONOLITH.verify(0, anyRequestedFor(anyUrl()));
+  }
+
+  @Test
+  void routesTripAdvancesToTheMonolithNextToTheSettlement() {
+    String token = validToken();
+    MONOLITH.stubFor(
+        get(urlEqualTo("/api/v1/trips/123/advances")).willReturn(okJson("[]")));
+    MONOLITH.stubFor(
+        post(urlEqualTo("/api/v1/trips/123/advances"))
+            .willReturn(
+                aResponse()
+                    .withStatus(201)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("{\"tripId\":\"123\"}")));
+
+    webTestClient
+        .get()
+        .uri("/api/v1/trips/123/advances")
+        .header(AUTHORIZATION, "Bearer " + token)
+        .exchange()
+        .expectStatus()
+        .isOk();
+    webTestClient
+        .post()
+        .uri("/api/v1/trips/123/advances")
+        .header(AUTHORIZATION, "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"amount\":500.00,\"deliveryMethod\":\"CASH\"}")
+        .exchange()
+        .expectStatus()
+        .isCreated();
+
+    MONOLITH.verify(
+        getRequestedFor(urlEqualTo("/api/v1/trips/123/advances"))
+            .withHeader(AUTHORIZATION, equalTo("Bearer " + token)));
+    MONOLITH.verify(postRequestedFor(urlEqualTo("/api/v1/trips/123/advances")));
+    TRIP.verify(0, anyRequestedFor(anyUrl()));
+  }
+
+  @Test
   void routesVehiclesDriversAndMaintenancesToFleetService() {
     String token = validToken();
     for (String path : new String[] {"/api/v1/vehicles", "/api/v1/drivers", "/api/v1/maintenances"}) {
@@ -147,6 +213,36 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
         .exists();
 
     TRIP.verify(1, getRequestedFor(urlEqualTo("/v3/api-docs")));
+    MONOLITH.verify(0, anyRequestedFor(anyUrl()));
+  }
+
+  @Test
+  void sendsPublicDemoRequestsToIamWithoutToken() {
+    String path = "/api/v1/public/demo-requests";
+    IAM.stubFor(
+        post(urlEqualTo(path))
+            .willReturn(
+                aResponse()
+                    .withStatus(201)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("{\"status\":\"RECEIVED\"}")));
+
+    webTestClient
+        .post()
+        .uri(path)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"fullName\":\"Ana Rojas Paredes\"}")
+        .exchange()
+        .expectStatus()
+        .isCreated()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("RECEIVED");
+
+    IAM.verify(postRequestedFor(urlEqualTo(path)));
+    assertThat(IAM.findAll(postRequestedFor(urlEqualTo(path))).get(0).containsHeader(AUTHORIZATION))
+        .isFalse();
+    webTestClient.get().uri(path).exchange().expectStatus().isUnauthorized();
     MONOLITH.verify(0, anyRequestedFor(anyUrl()));
   }
 
@@ -184,10 +280,20 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
         .expectBody()
         .jsonPath("$.openapi")
         .exists();
-    webTestClient.get().uri("/v3/api-docs/monolith").exchange().expectStatus().isOk();
+    webTestClient.get().uri("/v3/api-docs/core").exchange().expectStatus().isOk();
 
     IAM.verify(1, getRequestedFor(urlEqualTo("/v3/api-docs")));
     MONOLITH.verify(1, getRequestedFor(urlEqualTo("/v3/api-docs")));
+  }
+
+  @Test
+  void listsTheCoreDocumentsInSwaggerUnderTheirName() {
+    assertThat(swaggerUi.getUrls())
+        .anySatisfy(
+            url -> {
+              assertThat(url.getName()).isEqualTo("core");
+              assertThat(url.getUrl()).isEqualTo("/v3/api-docs/core");
+            });
   }
 
   @Test

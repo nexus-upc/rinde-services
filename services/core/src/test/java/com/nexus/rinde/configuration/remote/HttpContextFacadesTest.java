@@ -8,6 +8,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.nexus.rinde.expense.infrastructure.remote.HttpExpenseContextFacade;
 import com.nexus.rinde.fleet.infrastructure.remote.HttpFleetContextFacade;
+import com.nexus.rinde.incident.infrastructure.remote.HttpIncidentContextFacade;
 import com.nexus.rinde.trip.infrastructure.remote.HttpTripContextFacade;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -17,10 +18,29 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
-/** Prueba los contratos internos que core consume de Trip, Fleet y Expense separados. */
+/** Prueba los contratos internos que core consume de Trip, Fleet, Expense e Incident separados. */
 class HttpContextFacadesTest {
 
   private final UUID tenantId = UUID.randomUUID();
+
+  @Test
+  void readsTheOpenIncidentCountAndReportsAnUnavailableService() {
+    var builder = RestClient.builder().baseUrl("http://incident.test");
+    var server = MockRestServiceServer.bindTo(builder).build();
+    var facade = new HttpIncidentContextFacade(builder.build());
+    String path = "http://incident.test/api/internal/v1/incidents/tenants/" + tenantId + "/open-count";
+    server
+        .expect(requestTo(path))
+        .andRespond(
+            withSuccess(
+                "{\"count\":4}", MediaType.APPLICATION_JSON));
+    server.expect(requestTo(path)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+
+    assertThat(facade.countOpenByTenantId(tenantId)).isEqualTo(4L);
+    assertThatThrownBy(() -> facade.countOpenByTenantId(tenantId))
+        .isInstanceOf(RemoteServiceUnavailableException.class);
+    server.verify();
+  }
 
   @Test
   void readsATripAndTreatsAMissingOneAsAbsent() {

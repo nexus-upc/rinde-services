@@ -95,7 +95,7 @@ class GatewaySecurityIntegrationTest extends AbstractGatewayIntegrationTest {
 
   @Test
   void letsSignedBillingWebhookThroughWithoutToken() {
-    MONOLITH.stubFor(post(urlEqualTo("/api/v1/billing/webhooks/payment")).willReturn(aResponse().withStatus(202)));
+    SUBSCRIPTION.stubFor(post(urlEqualTo("/api/v1/billing/webhooks/payment")).willReturn(aResponse().withStatus(202)));
 
     webTestClient
         .post()
@@ -106,7 +106,8 @@ class GatewaySecurityIntegrationTest extends AbstractGatewayIntegrationTest {
         .expectStatus()
         .isEqualTo(202);
 
-    MONOLITH.verify(1, anyRequestedFor(anyUrl()));
+    SUBSCRIPTION.verify(1, anyRequestedFor(anyUrl()));
+    MONOLITH.verify(0, anyRequestedFor(anyUrl()));
   }
 
   @Test

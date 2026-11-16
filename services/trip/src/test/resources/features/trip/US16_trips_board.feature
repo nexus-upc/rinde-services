@@ -29,6 +29,13 @@ Característica: US16 Consultar el tablero de viajes
     Cuando el conductor "luis@andes.pe" consulta el tablero
     Entonces la respuesta tiene código 403
 
+  Escenario: El tablero sigue disponible cuando la suscripción de la empresa está restringida
+    Cuando el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
+    Y que la suscripción de la empresa con RUC "20123456789" está restringida
+    Cuando el administrador consulta el tablero sin filtro
+    Entonces la respuesta tiene código 200
+    Y la lista contiene 1 viajes
+
   Escenario: El tablero no expone viajes de otra empresa
     Cuando el administrador programa el viaje "viaje" de "Lima" a "Arequipa" con carga "Repuestos" y salida "HOY+5"
     Dado que existe una empresa verificada con RUC "20987654321" y administrador "otro@otra.pe"

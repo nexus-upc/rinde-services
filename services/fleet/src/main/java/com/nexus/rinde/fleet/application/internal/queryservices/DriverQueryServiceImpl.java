@@ -3,6 +3,7 @@ package com.nexus.rinde.fleet.application.internal.queryservices;
 import com.nexus.rinde.fleet.domain.model.aggregates.Driver;
 import com.nexus.rinde.fleet.domain.model.queries.CheckDriverEligibilityQuery;
 import com.nexus.rinde.fleet.domain.model.queries.GetDriverByIdQuery;
+import com.nexus.rinde.fleet.domain.model.queries.GetDriverByUserIdQuery;
 import com.nexus.rinde.fleet.domain.model.queries.ListDriversQuery;
 import com.nexus.rinde.fleet.domain.model.valueobjects.DriverEligibility;
 import com.nexus.rinde.fleet.domain.services.DriverQueryService;
@@ -28,6 +29,11 @@ public class DriverQueryServiceImpl implements DriverQueryService {
   @Override
   public Optional<Driver> handle(GetDriverByIdQuery query) {
     return driverRepository.findByIdAndTenantId(query.driverId(), query.tenantId());
+  }
+
+  @Override
+  public Optional<Driver> handle(GetDriverByUserIdQuery query) {
+    return driverRepository.findByTenantIdAndUserId(query.tenantId(), query.userId());
   }
 
   @Override

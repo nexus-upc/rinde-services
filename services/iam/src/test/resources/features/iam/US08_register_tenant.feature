@@ -17,6 +17,12 @@ Característica: US08 Registrar la empresa y confirmar su correo
     Entonces la respuesta tiene código 409
     Y el mensaje de error es "Ya existe una empresa registrada con ese RUC."
 
+  Escenario: No se puede registrar un correo de administrador ya registrado
+    Dado que existe una empresa verificada con RUC "20123456789" y administrador "ana@andes.pe"
+    Cuando registro la empresa "Otra Empresa SAC" con RUC "20987654321" y administrador "ana@andes.pe"
+    Entonces la respuesta tiene código 409
+    Y el mensaje de error es "Ya existe un usuario registrado con ese correo."
+
   Escenario: Un RUC con menos de 11 dígitos es rechazado
     Cuando registro la empresa "Empresa Chica SAC" con RUC "123" y administrador "ana@andes.pe"
     Entonces la respuesta tiene código 400

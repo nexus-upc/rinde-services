@@ -45,6 +45,17 @@ class GatewayCorsAndCorrelationIntegrationTest extends AbstractGatewayIntegratio
   }
 
   @Test
+  void answersPreflightFromLandingOriginForPublicDemoRequests() throws Exception {
+    HttpResponse<Void> response =
+        preflight(LANDING_ORIGIN, "/api/v1/public/demo-requests");
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(response.headers().firstValue(ACCESS_CONTROL_ALLOW_ORIGIN))
+        .contains(LANDING_ORIGIN);
+    IAM.verify(0, anyRequestedFor(anyUrl()));
+  }
+
+  @Test
   void doesNotGrantCorsToOtherOrigins() throws Exception {
     HttpResponse<Void> response = preflight("http://sitio-ajeno.example");
 
@@ -52,13 +63,18 @@ class GatewayCorsAndCorrelationIntegrationTest extends AbstractGatewayIntegratio
     assertThat(response.headers().firstValue(ACCESS_CONTROL_ALLOW_ORIGIN)).isEmpty();
   }
 
+  private HttpResponse<Void> preflight(String origin) throws IOException, InterruptedException {
+    return preflight(origin, "/api/v1/trips");
+  }
+
   /**
    * Usa un cliente HTTP real: WebTestClient no envía el preflight igual que un navegador y el
    * procesador CORS lo rechaza.
    */
-  private HttpResponse<Void> preflight(String origin) throws IOException, InterruptedException {
+  private HttpResponse<Void> preflight(String origin, String path)
+      throws IOException, InterruptedException {
     HttpRequest request =
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/trips"))
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
             .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
             .header(ORIGIN, origin)
             .header(ACCESS_CONTROL_REQUEST_METHOD, "POST")

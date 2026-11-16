@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.nexus</groupId>
   <artifactId>rinde-services</artifactId>
-  <version>0.3.0</version>
+  <version>0.4.0</version>
   <packaging>pom</packaging>
   <name>rinde-services</name>
   <description>Agregador de los servicios de RINDE; cada módulo conserva su versión y build.</description>
@@ -16,6 +16,8 @@
     <module>services/trip</module>
     <module>services/fleet</module>
     <module>services/expense</module>
+    <module>services/incident</module>
+    <module>services/subscription</module>
     <module>gateway</module>
   </modules>
 </project>

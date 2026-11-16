@@ -186,6 +186,26 @@ public class SetupSteps {
     expenses.approveExpense(UUID.fromString(context.expenseIdOf(expenseName)));
   }
 
+  @Dado("que el administrador {string} observó el gasto {string}")
+  public void theAdministratorObservesExpense(String email, String expenseName) {
+    assertThat(doubles.accountByEmail(email).orElseThrow().role()).isEqualTo("ADMINISTRATOR");
+    expenses.changeStatus(UUID.fromString(context.expenseIdOf(expenseName)), "OBSERVED");
+  }
+
+  /** Un gasto aprobado con fecha propia, para probar el gasto del periodo. */
+  @Dado("que existe un gasto aprobado de {string} soles con fecha {string} en el viaje {string}")
+  public void anApprovedExpenseExists(String amount, String date, String tripName) {
+    UUID tripId = tripId(tripName);
+    expenses.addExpense(
+        doubles.tenantOfTrip(tripId),
+        tripId,
+        UUID.randomUUID(),
+        "FUEL",
+        new BigDecimal(amount),
+        RelativeDates.date(date),
+        "APPROVED");
+  }
+
   // Auxiliares
 
   private TenantAccess access() {

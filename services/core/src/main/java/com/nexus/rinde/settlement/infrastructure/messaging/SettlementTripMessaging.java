@@ -1,9 +1,13 @@
 package com.nexus.rinde.settlement.infrastructure.messaging;
 
 import com.nexus.rinde.settlement.domain.model.aggregates.Settlement;
+import com.nexus.rinde.settlement.domain.model.aggregates.TripAdvance;
 import com.nexus.rinde.settlement.infrastructure.persistence.jpa.repositories.SettlementRepository;
+import com.nexus.rinde.settlement.infrastructure.persistence.jpa.repositories.TripAdvanceRepository;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -14,15 +18,23 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Crea el borrador de liquidación cuando trip.finished llega por RabbitMQ; idempotente por eventId. */
+/**
+ * Abre la liquidación cuando trip.finished llega por RabbitMQ e incorpora los adelantos del viaje;
+ * idempotente por eventId.
+ */
 @Component
 public class SettlementTripMessaging {
 
   private final SettlementRepository settlementRepository;
+  private final TripAdvanceRepository tripAdvanceRepository;
   private final JdbcTemplate jdbc;
 
-  public SettlementTripMessaging(SettlementRepository settlementRepository, JdbcTemplate jdbc) {
+  public SettlementTripMessaging(
+      SettlementRepository settlementRepository,
+      TripAdvanceRepository tripAdvanceRepository,
+      JdbcTemplate jdbc) {
     this.settlementRepository = settlementRepository;
+    this.tripAdvanceRepository = tripAdvanceRepository;
     this.jdbc = jdbc;
   }
 
@@ -44,8 +56,18 @@ public class SettlementTripMessaging {
 
     if (settlementRepository.existsByTripId(event.tripId())) return;
 
-    settlementRepository.save(
-        Settlement.create(event.tenantId(), event.tripId(), event.driverId()));
+    Settlement settlement = Settlement.create(event.tenantId(), event.tripId(), event.driverId());
+    List<TripAdvance> advances =
+        tripAdvanceRepository.findByTenantIdAndTripIdOrderByCreatedAtAsc(
+            event.tenantId(), event.tripId());
+    if (!advances.isEmpty()) {
+      BigDecimal total =
+          advances.stream()
+              .map(TripAdvance::getAmount)
+              .reduce(BigDecimal.ZERO, BigDecimal::add);
+      settlement.incorporateAdvance(total, advances.get(0).getCurrency());
+    }
+    settlementRepository.save(settlement);
   }
 
   public record Event(UUID eventId, UUID tenantId, UUID tripId, UUID driverId) {}

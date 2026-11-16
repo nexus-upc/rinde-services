@@ -5,6 +5,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,6 +24,14 @@ public class IamStub {
   public synchronized void reset() {
     server.resetMappings();
     apply();
+  }
+
+  /** Desde ahora IAM informa a la empresa como restringida por su suscripción vencida. */
+  public synchronized void restrictTenant(UUID tenantId) {
+    server.stubFor(
+        get(urlPathMatching("/api/internal/v1/tenants/" + tenantId + "/status"))
+            .atPriority(1)
+            .willReturn(okJson("{\"status\":\"RESTRICTED\"}")));
   }
 
   private void apply() {
