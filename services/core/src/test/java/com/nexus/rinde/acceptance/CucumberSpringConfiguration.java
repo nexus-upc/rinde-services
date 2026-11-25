@@ -1,5 +1,6 @@
 package com.nexus.rinde.acceptance;
 
+import com.nexus.rinde.notification.domain.services.PushAdapter;
 import com.nexus.rinde.subscription.platform.infrastructure.PlatformCompanyDirectory;
 import com.nexus.rinde.support.AbstractIntegrationTest;
 import io.cucumber.spring.CucumberContextConfiguration;
@@ -23,6 +24,9 @@ public class CucumberSpringConfiguration extends AbstractIntegrationTest {
 
   /** El directorio de empresas vive en IAM; los pasos de US44 le indican los nombres. */
   @MockitoBean PlatformCompanyDirectory platformCompanyDirectory;
+
+  /** Doble de proveedor push para verificar entrega exitosa y fallos transitorios en US36. */
+  @MockitoBean PushAdapter pushAdapter;
 
   @DynamicPropertySource
   static void platformProperties(DynamicPropertyRegistry registry) {

@@ -14,8 +14,12 @@ public class PushProperties {
   void validate() {
     String normalized = provider == null ? "unavailable" : provider.trim();
     if ("fcm".equals(normalized)) {
-      throw new IllegalStateException(
-          "El proveedor push fcm está pendiente de implementar en S4-24.");
+      String credentials = fcm == null ? null : fcm.getCredentialsJson();
+      if (credentials == null || credentials.isBlank()) {
+        throw new IllegalStateException(
+            "Debe configurar rinde.push.fcm.credentials-json cuando rinde.push.provider es fcm.");
+      }
+      return;
     }
     if (!"unavailable".equals(normalized)) {
       throw new IllegalStateException("Proveedor push no válido: " + normalized);

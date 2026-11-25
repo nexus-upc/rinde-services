@@ -9,8 +9,11 @@ import static org.mockito.Mockito.verify;
 
 import com.nexus.rinde.notification.application.events.TripAssignedNotification;
 import com.nexus.rinde.notification.application.internal.commandservices.TripAssignmentNotificationService;
+import com.nexus.rinde.notification.domain.model.valueobjects.TripAssignmentNotice;
 import com.nexus.rinde.notification.domain.services.PushAdapter;
+import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.DriverDeviceEntity;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.RetryStoreEntry;
+import com.nexus.rinde.notification.infrastructure.persistence.jpa.repositories.DriverDeviceRepository;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.repositories.RetryStoreRepository;
 import com.nexus.rinde.notification.infrastructure.services.PushAdapterUnavailableException;
 import com.nexus.rinde.support.AbstractIntegrationTest;
@@ -22,6 +25,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
@@ -45,6 +49,7 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
   @Autowired private AmqpAdmin admin;
   @Autowired private RabbitListenerEndpointRegistry listeners;
   @Autowired private RetryStoreRepository notices;
+  @Autowired private DriverDeviceRepository driverDevices;
   @Autowired private Environment environment;
   @MockitoBean private PushAdapter pushAdapter;
   @MockitoSpyBean private TripAssignmentNotificationService notificationService;
@@ -72,6 +77,7 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
   @Test
   void receivesTheTripPublisherContractWithoutLoadingItsJavaType() {
     TripAssignedNotification event = event();
+    String expectedToken = registerDriverWithDevice(event);
     send(event);
     awaitNotice(event.eventId());
 
@@ -81,15 +87,21 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
     assertThat(notice.getRecipientDriverId()).isEqualTo(event.driverId());
     assertThat(notice.getMessage()).contains(event.code(), event.destination());
     assertThat(notice.getDeliveryStatus()).isEqualTo(RetryStoreEntry.DELIVERED);
-    verify(pushAdapter).send(any());
+
+    ArgumentCaptor<TripAssignmentNotice> captor =
+        ArgumentCaptor.forClass(TripAssignmentNotice.class);
+    verify(pushAdapter).send(captor.capture());
+    assertThat(captor.getValue().deviceTokens()).containsExactly(expectedToken);
   }
 
   @Test
   void ignoresRepeatedBrokerDeliveries() {
     TripAssignedNotification event = event();
+    registerDriverWithDevice(event);
     send(event);
     send(event);
     TripAssignedNotification sentinel = event();
+    registerDriverWithDevice(sentinel);
     send(sentinel);
     awaitNotice(sentinel.eventId());
 
@@ -102,6 +114,7 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
     doThrow(new PushAdapterUnavailableException("Proveedor push no disponible."))
         .when(pushAdapter).send(any());
     TripAssignedNotification event = event();
+    registerDriverWithDevice(event);
     send(event);
     awaitNotice(event.eventId());
 
@@ -114,16 +127,41 @@ class TripAssignedMessagingIntegrationTest extends AbstractIntegrationTest {
   }
 
   @Test
+  void skipsPushWithoutRetriesWhenDriverHasNoRegisteredDevices() {
+    TripAssignedNotification event = event();
+    contextDoubles.addDriver(
+        event.tenantId(), event.driverId(), UUID.randomUUID(), "Luis Quispe", "Q-1234", "A-IIb");
+    send(event);
+    awaitNotice(event.eventId());
+
+    RetryStoreEntry notice = notices.findById(event.eventId()).orElseThrow();
+    assertThat(notice.getDeliveryStatus()).isEqualTo(RetryStoreEntry.SKIPPED);
+    assertThat(notice.getNextAttemptAt()).isNull();
+    verify(pushAdapter, org.mockito.Mockito.never()).send(any());
+  }
+
+  @Test
   void retriesATransientDatabaseFailureBeforeAcknowledgingTheMessage() {
     doThrow(new DataAccessResourceFailureException("Base temporalmente no disponible."))
         .doCallRealMethod().when(notificationService).handle(any(TripAssignedNotification.class));
     TripAssignedNotification event = event();
+    registerDriverWithDevice(event);
     send(event);
     awaitNotice(event.eventId());
 
     verify(notificationService, times(2)).handle(any(TripAssignedNotification.class));
     verify(pushAdapter).send(any());
     assertThat(notices.count()).isEqualTo(1);
+  }
+
+  private String registerDriverWithDevice(TripAssignedNotification event) {
+    UUID userId = UUID.randomUUID();
+    String token = "fcm-token-" + event.driverId();
+    contextDoubles.addDriver(
+        event.tenantId(), event.driverId(), userId, "Luis Quispe", "Q-1234", "A-IIb");
+    driverDevices.save(
+        DriverDeviceEntity.register(event.tenantId(), userId, token, "ANDROID", Instant.now()));
+    return token;
   }
 
   @Test

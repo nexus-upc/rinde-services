@@ -3,7 +3,6 @@ package com.nexus.rinde.notification.application.internal.commandservices;
 import com.nexus.rinde.notification.domain.model.valueobjects.EmailMessage;
 import com.nexus.rinde.notification.domain.model.valueobjects.RetryPolicy;
 import com.nexus.rinde.notification.domain.services.EmailAdapter;
-import com.nexus.rinde.notification.domain.services.PushAdapter;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.EmailOutboxEntry;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.RetryStoreEntry;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.repositories.EmailOutboxRepository;
@@ -25,7 +24,7 @@ public class NotificationRetryService {
 
   private final RetryStoreRepository retryStoreRepository;
   private final EmailOutboxRepository emailOutboxRepository;
-  private final PushAdapter pushAdapter;
+  private final TripAssignmentPushDispatcher pushDispatcher;
   private final EmailAdapter emailAdapter;
   private final RetryPolicy retryPolicy;
   private final Clock clock;
@@ -34,14 +33,14 @@ public class NotificationRetryService {
   public NotificationRetryService(
       RetryStoreRepository retryStoreRepository,
       EmailOutboxRepository emailOutboxRepository,
-      PushAdapter pushAdapter,
+      TripAssignmentPushDispatcher pushDispatcher,
       EmailAdapter emailAdapter,
       RetryPolicy retryPolicy,
       Clock clock,
       PlatformTransactionManager transactionManager) {
     this.retryStoreRepository = retryStoreRepository;
     this.emailOutboxRepository = emailOutboxRepository;
-    this.pushAdapter = pushAdapter;
+    this.pushDispatcher = pushDispatcher;
     this.emailAdapter = emailAdapter;
     this.retryPolicy = retryPolicy;
     this.clock = clock;
@@ -77,17 +76,7 @@ public class NotificationRetryService {
     retryStoreRepository
         .findById(eventId)
         .filter(entry -> entry.isDueAt(now))
-        .ifPresent(
-            entry -> {
-              try {
-                pushAdapter.send(entry.toNotice());
-                entry.markDelivered(now);
-              } catch (RuntimeException ex) {
-                String detail = ex.getMessage() == null ? "Falló la entrega push." : ex.getMessage();
-                entry.markFailed(detail, true, retryPolicy, now);
-                log.warn("Reintento push fallido para el evento {}.", eventId, ex);
-              }
-            });
+        .ifPresent(entry -> pushDispatcher.dispatch(entry, entry.toNotice(), true, now));
   }
 
   private void retryEmail(UUID eventId) {
