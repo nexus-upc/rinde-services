@@ -53,8 +53,13 @@ rinde:
     # Tamaño máximo de cada comprobante en bytes (5 MB por defecto).
     max-size-bytes: ${RINDE_EVIDENCE_MAX_SIZE_BYTES:5242880}
     storage:
+      # Adaptador activo: local o azure-blob.
+      type: ${RINDE_EVIDENCE_STORAGE_TYPE:local}
       # Carpeta de los comprobantes. En Docker es un volumen; no se expone por HTTP.
       local-path: ${RINDE_EVIDENCE_STORAGE_PATH:./data/evidences}
+      blob:
+        connection-string: ${RINDE_EVIDENCE_BLOB_CONNECTION_STRING:}
+        container: ${RINDE_EVIDENCE_BLOB_CONTAINER:}
 
 springdoc:
   api-docs:

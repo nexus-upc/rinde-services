@@ -12,11 +12,11 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Consultas de incidencias abiertas que usa el tablero operativo de Dashboard por HTTP. No las
- * enruta el gateway.
+ * Consultas de incidencias que usan Dashboard y Fleet por HTTP. No las enruta el gateway.
  */
 @RestController
 @RequestMapping(
@@ -30,6 +30,15 @@ public class InternalIncidentsController {
 
   public InternalIncidentsController(IncidentQueryService queryService) {
     this.queryService = queryService;
+  }
+
+  @GetMapping
+  @Operation(summary = "Incidencias de un vehículo de la empresa en cualquier estado")
+  public List<InternalIncidentResource> listByVehicle(
+      @PathVariable UUID tenantId, @RequestParam UUID vehicleId) {
+    return queryService.list(tenantId, null, null, vehicleId).stream()
+        .map(InternalIncidentsController::toResource)
+        .toList();
   }
 
   @GetMapping("/open")
@@ -52,6 +61,7 @@ public class InternalIncidentsController {
         incident.getTripId(),
         incident.getVehicleId(),
         incident.getType().name(),
+        incident.getDescription(),
         incident.getStatus().name(),
         incident.getReportedAt());
   }
@@ -61,6 +71,7 @@ public class InternalIncidentsController {
       UUID tripId,
       UUID vehicleId,
       String type,
+      String description,
       String status,
       Instant reportedAt) {}
 

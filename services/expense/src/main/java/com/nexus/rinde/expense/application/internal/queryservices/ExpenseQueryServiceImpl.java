@@ -5,8 +5,10 @@ import com.nexus.rinde.expense.domain.model.entities.Evidence;
 import com.nexus.rinde.expense.domain.model.queries.GetEvidenceContentQuery;
 import com.nexus.rinde.expense.domain.model.queries.GetExpenseByIdQuery;
 import com.nexus.rinde.expense.domain.model.queries.GetExpensesByTripQuery;
+import com.nexus.rinde.expense.domain.model.queries.ListExpensesQuery;
 import com.nexus.rinde.expense.domain.model.valueobjects.EvidenceContent;
 import com.nexus.rinde.expense.domain.model.valueobjects.EvidenceFile;
+import com.nexus.rinde.expense.domain.model.valueobjects.PagedExpenses;
 import com.nexus.rinde.expense.domain.services.EvidenceStorage;
 import com.nexus.rinde.expense.domain.services.ExpenseQueryService;
 import com.nexus.rinde.expense.infrastructure.persistence.jpa.repositories.ExpenseRepository;
@@ -14,8 +16,10 @@ import com.nexus.rinde.shared.domain.exceptions.ForbiddenOperationException;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import java.util.List;
 import java.util.Set;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Atiende consultas sobre los gastos operativos registrados y sus comprobantes. */
 @Service
@@ -37,6 +41,12 @@ public class ExpenseQueryServiceImpl implements ExpenseQueryService {
   @Transactional(readOnly = true)
   public List<Expense> handle(GetExpensesByTripQuery query) {
     return expenseRepository.findByTenantIdAndTripId(query.tenantId(), query.tripId());
+  }
+
+  @Override
+  public PagedExpenses handle(ListExpensesQuery query) {
+    throw new ResponseStatusException(
+        HttpStatus.NOT_IMPLEMENTED, "Funcionalidad pendiente de implementar en S4-12.");
   }
 
   @Override

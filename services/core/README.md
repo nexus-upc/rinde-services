@@ -25,7 +25,7 @@ Core consulta los otros contextos a través de sus fachadas. Con la propiedad re
 | Trip | `RINDE_TRIP_REMOTE_ENABLED` | `TRIP_SERVICE_URL`, 8082 | Viajes para Dashboard. |
 | Fleet | `RINDE_FLEET_REMOTE_ENABLED` | `FLEET_SERVICE_URL`, 8083 | Conteo de unidades para Subscriptions y listados para Dashboard. |
 | Expense | `RINDE_EXPENSE_REMOTE_ENABLED` | `EXPENSE_SERVICE_URL`, 8084 | Gastos aprobados para Settlement y gastos para Dashboard. |
-| Incident | `RINDE_INCIDENT_REMOTE_ENABLED` | `INCIDENT_SERVICE_URL`, 8085 | Incidencias abiertas para Dashboard (`GET /api/internal/v1/incidents/tenants/{tenantId}/open-count`). |
+| Incident | `RINDE_INCIDENT_REMOTE_ENABLED` | `INCIDENT_SERVICE_URL`, 8085 | Incidencias abiertas para Dashboard (`/open-count` y `/open`). |
 
 Si un servicio no responde, la API informa 503. La excepción es Incident: el Dashboard entrega el resto de las métricas con `incidents.source` en `UNAVAILABLE` y `partial` en `true`. Las pruebas ponen estas propiedades en `false` y usan dobles en memoria (`support/ContextDoubles`, `support/ExpenseDouble` e `support/IncidentDouble`), de modo que no necesitan los otros servicios.
 
@@ -48,7 +48,21 @@ Todo pasa por el exchange durable `rinde.events`, en JSON y con `eventId` como c
 
 Los consumidores registran el `eventId` y no repiten el efecto. Cada cola tiene su cola `.dead` para los mensajes que fallan. La publicación pide confirmación al broker; si no llega, el error queda en el log con el `eventId` para conciliarlo.
 
-Notifications no tiene proveedor push: deja el aviso pendiente y reintenta a los 1, 2, 4, 8 y 16 minutos. No se presenta como un envío real.
+Notifications utiliza `RINDE_PUSH_PROVIDER` (`unavailable` por defecto, o `fcm` con `RINDE_FCM_CREDENTIALS_JSON`). Mientras no se conecte FCM, deja el aviso pendiente y reintenta a los 1, 2, 4, 8 y 16 minutos.
+
+## Endpoints nuevos del Sprint 4
+
+| Método | Ruta | Estado | Descripción |
+|---|---|---|---|
+| GET | `/api/v1/dashboard/charts` | pendiente (S4-23) | Series agregadas en PEN por categoría, viajes por estado y top de vehículos. |
+| POST | `/api/v1/notifications/devices` | pendiente (S4-24) | Registro idempotente de dispositivo móvil del conductor (`DRIVER`). |
+| DELETE | `/api/v1/notifications/devices/{token}` | pendiente (S4-24) | Baja idempotente del token de dispositivo del conductor (`DRIVER`). |
+| GET | `/api/v1/notifications` | pendiente (S4-25) | Listado paginado del centro de notificaciones de la empresa. |
+| GET | `/api/v1/notifications/unread-count` | pendiente (S4-25) | Cantidad de notificaciones no leídas para el usuario autenticado. |
+| PATCH | `/api/v1/notifications/{id}/read` | pendiente (S4-25) | Marca una notificación como leída por usuario. |
+| POST | `/api/v1/notifications/read-all` | pendiente (S4-25) | Marca todas las notificaciones pendientes de la empresa como leídas. |
+
+La migración V4 del módulo `notification` crea `company_notifications`, `notification_reads` y `driver_devices`.
 
 ## Pago simulado
 

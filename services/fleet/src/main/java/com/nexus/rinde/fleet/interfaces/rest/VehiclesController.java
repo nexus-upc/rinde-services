@@ -6,8 +6,10 @@ import com.nexus.rinde.fleet.domain.model.commands.RegisterVehicleCommand;
 import com.nexus.rinde.fleet.domain.model.entities.Maintenance;
 import com.nexus.rinde.fleet.domain.model.queries.GetVehicleByIdQuery;
 import com.nexus.rinde.fleet.domain.model.queries.GetVehicleHealthStatusQuery;
+import com.nexus.rinde.fleet.domain.model.queries.GetVehicleHistoryQuery;
 import com.nexus.rinde.fleet.domain.model.queries.ListVehiclesQuery;
 import com.nexus.rinde.fleet.domain.model.valueobjects.VehicleHealthStatus;
+import com.nexus.rinde.fleet.domain.model.valueobjects.VehicleHistory;
 import com.nexus.rinde.fleet.domain.services.MaintenanceCommandService;
 import com.nexus.rinde.fleet.domain.services.VehicleCommandService;
 import com.nexus.rinde.fleet.domain.services.VehicleQueryService;
@@ -15,6 +17,8 @@ import com.nexus.rinde.fleet.interfaces.rest.resources.CreateVehicleResource;
 import com.nexus.rinde.fleet.interfaces.rest.resources.MaintenanceResource;
 import com.nexus.rinde.fleet.interfaces.rest.resources.RecordMaintenanceResource;
 import com.nexus.rinde.fleet.interfaces.rest.resources.VehicleHealthStatusResource;
+import com.nexus.rinde.fleet.interfaces.rest.resources.VehicleHistoryItemResource;
+import com.nexus.rinde.fleet.interfaces.rest.resources.VehicleHistoryResource;
 import com.nexus.rinde.fleet.interfaces.rest.resources.VehicleResource;
 import com.nexus.rinde.fleet.interfaces.rest.transform.MaintenanceResourceAssembler;
 import com.nexus.rinde.fleet.interfaces.rest.transform.VehicleCommandAssembler;
@@ -40,6 +44,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Operaciones sobre las unidades de transporte de la empresa. */
@@ -202,5 +207,57 @@ public class VehiclesController {
     Maintenance maintenance = maintenanceCommandService.handle(command);
     return ResponseEntity.created(URI.create("/api/v1/maintenances/" + maintenance.getId()))
         .body(MaintenanceResourceAssembler.toResource(maintenance));
+  }
+
+  @GetMapping("/{id}/history")
+  @PreAuthorize("hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')")
+  @Operation(
+      summary = "Consultar historial consolidado del vehículo",
+      description =
+          "Unifica mantenimientos locales, viajes e incidencias del vehículo en orden"
+              + " descendente por fecha.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Historial del vehículo"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Fechas con formato inválido o rango invertido",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "El vehículo no existe en la empresa",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public ResponseEntity<VehicleHistoryResource> getHistory(
+      @PathVariable UUID id,
+      @RequestParam(required = false) String from,
+      @RequestParam(required = false) String to) {
+    VehicleHistory history =
+        vehicleQueryService.handle(
+            new GetVehicleHistoryQuery(TenantContext.tenantId(), id, from, to));
+    List<VehicleHistoryItemResource> items =
+        history.items().stream()
+            .map(
+                item ->
+                    new VehicleHistoryItemResource(
+                        item.type(),
+                        item.id(),
+                        item.date(),
+                        item.title(),
+                        item.status(),
+                        item.detail()))
+            .toList();
+    return ResponseEntity.ok(
+        new VehicleHistoryResource(
+            history.vehicleId(),
+            history.nextMaintenanceDate(),
+            items,
+            history.partial(),
+            history.unavailableSources()));
   }
 }

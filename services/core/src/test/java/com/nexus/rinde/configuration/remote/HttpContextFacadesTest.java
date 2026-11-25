@@ -24,6 +24,43 @@ class HttpContextFacadesTest {
   private final UUID tenantId = UUID.randomUUID();
 
   @Test
+  void readsOpenIncidentsAndReportsAnUnavailableService() {
+    var builder = RestClient.builder().baseUrl("http://incident.test");
+    var server = MockRestServiceServer.bindTo(builder).build();
+    var facade = new HttpIncidentContextFacade(builder.build());
+    UUID incidentId = UUID.randomUUID();
+    UUID tripId = UUID.randomUUID();
+    UUID vehicleId = UUID.randomUUID();
+    String path = "http://incident.test/api/internal/v1/incidents/tenants/" + tenantId + "/open";
+    server
+        .expect(requestTo(path))
+        .andRespond(
+            withSuccess(
+                "[{\"id\":\""
+                    + incidentId
+                    + "\",\"tripId\":\""
+                    + tripId
+                    + "\",\"vehicleId\":\""
+                    + vehicleId
+                    + "\",\"type\":\"BREAKDOWN\",\"description\":\"Falla\","
+                    + "\"status\":\"OPEN\",\"reportedAt\":\"2026-11-20T12:00:00Z\"}]",
+                MediaType.APPLICATION_JSON));
+    server.expect(requestTo(path)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+
+    assertThat(facade.findOpenByTenantId(tenantId))
+        .singleElement()
+        .satisfies(
+            incident -> {
+              assertThat(incident.id()).isEqualTo(incidentId);
+              assertThat(incident.tripId()).isEqualTo(tripId);
+              assertThat(incident.description()).isEqualTo("Falla");
+            });
+    assertThatThrownBy(() -> facade.findOpenByTenantId(tenantId))
+        .isInstanceOf(RemoteServiceUnavailableException.class);
+    server.verify();
+  }
+
+  @Test
   void readsTheOpenIncidentCountAndReportsAnUnavailableService() {
     var builder = RestClient.builder().baseUrl("http://incident.test");
     var server = MockRestServiceServer.bindTo(builder).build();
@@ -64,11 +101,13 @@ class HttpContextFacadesTest {
   }
 
   @Test
-  void countsAndListsFleetUnitsOfTheTenant() {
+  void countsAndListsFleetUnitsAndDriversOfTheTenant() {
     var builder = RestClient.builder().baseUrl("http://fleet.test");
     var server = MockRestServiceServer.bindTo(builder).build();
     var facade = new HttpFleetContextFacade(builder.build());
     String base = "http://fleet.test/api/internal/v1/fleet/tenants/" + tenantId;
+    UUID driverId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
     server
         .expect(requestTo(base + "/vehicles/count"))
         .andRespond(withSuccess("{\"count\":3}", MediaType.APPLICATION_JSON));
@@ -78,11 +117,25 @@ class HttpContextFacadesTest {
             withSuccess(
                 "[{\"id\":\"" + UUID.randomUUID() + "\",\"plateNumber\":\"ABC-123\"}]",
                 MediaType.APPLICATION_JSON));
+    server
+        .expect(requestTo(base + "/drivers"))
+        .andRespond(
+            withSuccess(
+                "[{\"id\":\""
+                    + driverId
+                    + "\",\"userId\":\""
+                    + userId
+                    + "\",\"fullName\":\"Luis Quispe\",\"licenseNumber\":\"Q12345678\","
+                    + "\"licenseCategory\":\"A-IIb\",\"status\":\"ENABLED\"}]",
+                MediaType.APPLICATION_JSON));
 
     assertThat(facade.countVehiclesByTenantId(tenantId)).isEqualTo(3);
     assertThat(facade.findVehiclesByTenantId(tenantId))
         .singleElement()
         .satisfies(vehicle -> assertThat(vehicle.plateNumber()).isEqualTo("ABC-123"));
+    assertThat(facade.findDriversByTenantId(tenantId))
+        .singleElement()
+        .satisfies(driver -> assertThat(driver.userId()).isEqualTo(userId));
     server.verify();
   }
 
@@ -97,13 +150,21 @@ class HttpContextFacadesTest {
         .expect(requestTo(base + "/trips/" + tripId + "/approved"))
         .andRespond(
             withSuccess(
-                "[{\"id\":\"" + UUID.randomUUID() + "\",\"amount\":35.50,\"status\":\"APPROVED\"}]",
+                "[{\"id\":\""
+                    + UUID.randomUUID()
+                    + "\",\"tripId\":\""
+                    + tripId
+                    + "\",\"amount\":35.50,\"status\":\"APPROVED\"}]",
                 MediaType.APPLICATION_JSON));
     server.expect(requestTo(base)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
 
     assertThat(facade.findApprovedExpensesByTripId(tenantId, tripId))
         .singleElement()
-        .satisfies(expense -> assertThat(expense.amount()).isEqualByComparingTo(new BigDecimal("35.50")));
+        .satisfies(
+            expense -> {
+              assertThat(expense.tripId()).isEqualTo(tripId);
+              assertThat(expense.amount()).isEqualByComparingTo(new BigDecimal("35.50"));
+            });
     assertThatThrownBy(() -> facade.findByTenantId(tenantId))
         .isInstanceOf(RemoteServiceUnavailableException.class);
     server.verify();

@@ -71,6 +71,11 @@ rinde:
   web:
     # URL del frontend Angular; los enlaces del log de DEBUG apuntan a ella.
     base-url: ${WEB_BASE_URL:http://localhost:4200}
+  mail:
+    # Proveedor activo: demo o azure.
+    provider: ${RINDE_MAIL_PROVIDER:demo}
+    acs-connection-string: ${RINDE_ACS_CONNECTION_STRING:}
+    sender: ${RINDE_MAIL_SENDER:}
 
 springdoc:
   api-docs:

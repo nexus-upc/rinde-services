@@ -55,6 +55,7 @@ class InternalExpensesControllerIntegrationTest extends AbstractIntegrationTest 
         .perform(get("/api/internal/v1/expenses/tenants/{tenantId}/trips/{tripId}/approved", tenantId, tripId))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].tripId").value(tripId.toString()))
         .andExpect(jsonPath("$[0].category").value("FUEL"))
         .andExpect(jsonPath("$[0].amount").value(150.00))
         .andExpect(jsonPath("$[0].status").value("APPROVED"));

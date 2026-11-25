@@ -1,6 +1,8 @@
 package com.nexus.rinde.incident.domain.services;
 
 import com.nexus.rinde.incident.domain.model.aggregates.Incident;
+import com.nexus.rinde.incident.domain.model.queries.GetIncidentEvidenceContentQuery;
+import com.nexus.rinde.incident.domain.model.valueobjects.IncidentEvidenceContent;
 import com.nexus.rinde.incident.domain.model.valueobjects.IncidentStatus;
 import java.util.List;
 import java.util.UUID;
@@ -16,4 +18,6 @@ public interface IncidentQueryService {
 
   /** Incidencias que aún no están cerradas: abiertas o en atención. */
   List<Incident> findOpen(UUID tenantId);
+
+  IncidentEvidenceContent findEvidenceContent(GetIncidentEvidenceContentQuery query);
 }

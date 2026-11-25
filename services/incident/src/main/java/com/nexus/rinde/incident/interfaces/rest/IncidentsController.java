@@ -1,9 +1,12 @@
 package com.nexus.rinde.incident.interfaces.rest;
 
 import com.nexus.rinde.incident.domain.model.aggregates.Incident;
+import com.nexus.rinde.incident.domain.model.commands.AttachIncidentEvidenceCommand;
 import com.nexus.rinde.incident.domain.model.commands.CloseIncidentCommand;
 import com.nexus.rinde.incident.domain.model.commands.ReportIncidentCommand;
 import com.nexus.rinde.incident.domain.model.commands.StartIncidentAttentionCommand;
+import com.nexus.rinde.incident.domain.model.queries.GetIncidentEvidenceContentQuery;
+import com.nexus.rinde.incident.domain.model.valueobjects.IncidentEvidenceContent;
 import com.nexus.rinde.incident.domain.model.valueobjects.IncidentStatus;
 import com.nexus.rinde.incident.domain.model.valueobjects.ReportOutcome;
 import com.nexus.rinde.incident.domain.services.IncidentCommandService;
@@ -22,9 +25,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -36,7 +44,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /** Reporte de incidencias por el conductor, consulta de la bandeja y atención o cierre. */
 @RestController
@@ -252,5 +262,90 @@ public class IncidentsController {
             new CloseIncidentCommand(
                 TenantContext.tenantId(), id, TenantContext.userId(), resource.action()));
     return ResponseEntity.ok(IncidentResourceFromEntityAssembler.toResource(incident));
+  }
+
+  @PostMapping(
+      value = "/api/v1/incidents/{id}/evidences",
+      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("hasRole('DRIVER')")
+  @Operation(
+      summary = "Adjuntar evidencia fotográfica o PDF a una incidencia",
+      description =
+          "Permite al conductor que reportó la incidencia adjuntar o reemplazar su archivo de"
+              + " evidencia.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "201", description = "Evidencia adjunta"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Archivo faltante, vacío o con formato no permitido",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "La incidencia no existe",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public ResponseEntity<IncidentResource> attachEvidence(
+      @PathVariable UUID id, @RequestPart(value = "file", required = false) MultipartFile file)
+      throws IOException {
+    byte[] bytes = file != null ? file.getBytes() : new byte[0];
+    String filename = file != null ? file.getOriginalFilename() : null;
+    Incident incident =
+        commandService.attachEvidence(
+            new AttachIncidentEvidenceCommand(
+                TenantContext.tenantId(), id, TenantContext.userId(), filename, bytes));
+    IncidentResource resource = IncidentResourceFromEntityAssembler.toResource(incident);
+    URI location =
+        resource.evidence() != null
+            ? URI.create(resource.evidence().contentUrl())
+            : URI.create("/api/v1/incidents/" + id);
+    return ResponseEntity.created(location).body(resource);
+  }
+
+  @GetMapping(
+      value = "/api/v1/incidents/{id}/evidences/{evidenceId}/content",
+      produces = MediaType.ALL_VALUE)
+  @PreAuthorize("isAuthenticated()")
+  @Operation(
+      summary = "Descargar contenido binario de evidencia de incidencia",
+      description =
+          "Devuelve los bytes de la evidencia para administradores, operadores o el conductor que"
+              + " reportó la incidencia.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Contenido de la evidencia"),
+    @ApiResponse(
+        responseCode = "404",
+        description = "La incidencia, la evidencia o su archivo no existen",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public ResponseEntity<byte[]> getEvidenceContent(
+      @PathVariable UUID id, @PathVariable UUID evidenceId) {
+    IncidentEvidenceContent content =
+        queryService.findEvidenceContent(
+            new GetIncidentEvidenceContentQuery(
+                TenantContext.tenantId(),
+                id,
+                evidenceId,
+                TenantContext.userId(),
+                TenantContext.role()));
+    return ResponseEntity.ok()
+        .contentType(MediaType.parseMediaType(content.contentType()))
+        .contentLength(content.content().length)
+        .cacheControl(CacheControl.noStore())
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            ContentDisposition.inline()
+                .filename(content.fileName(), StandardCharsets.UTF_8)
+                .build()
+                .toString())
+        .body(content.content());
   }
 }

@@ -1,9 +1,11 @@
 package com.nexus.rinde.dashboard.application.internal.queryservices;
 
+import com.nexus.rinde.dashboard.domain.model.queries.GetDashboardChartsQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetFleetStatusQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetOperationalMetricsQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetTripSummaryQuery;
 import com.nexus.rinde.dashboard.domain.services.DashboardQueryService;
+import com.nexus.rinde.dashboard.interfaces.rest.resources.DashboardChartsResource;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource.DriverSummary;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource.VehicleSummary;
@@ -30,8 +32,10 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Implementación del servicio de consulta del dashboard operativo. */
 @Service
@@ -104,7 +108,18 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
         expenseCurrency,
         settlement != null ? settlement.status() : null,
         settlement != null ? settlement.advanceAmount() : null,
-        settlement != null ? settlement.advanceBalance() : null);
+        settlement != null ? settlement.advanceBalance() : null,
+        null,
+        null,
+        Map.of("REGISTERED", 0, "PENDING_SUPPORT", 0, "APPROVED", 0, "OBSERVED", 0),
+        BigDecimal.ZERO,
+        0,
+        null,
+        null,
+        null,
+        List.of(),
+        false,
+        List.of());
   }
 
   @Override
@@ -232,5 +247,11 @@ public class DashboardQueryServiceImpl implements DashboardQueryService {
     } catch (RemoteServiceUnavailableException ex) {
       return new OperationalMetricsResource.Incidents(null, "UNAVAILABLE");
     }
+  }
+
+  @Override
+  public DashboardChartsResource handle(GetDashboardChartsQuery query) {
+    throw new ResponseStatusException(
+        HttpStatus.NOT_IMPLEMENTED, "Funcionalidad pendiente de implementar en S4-23.");
   }
 }

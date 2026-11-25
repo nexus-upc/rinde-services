@@ -1,9 +1,11 @@
 package com.nexus.rinde.dashboard.interfaces.rest;
 
+import com.nexus.rinde.dashboard.domain.model.queries.GetDashboardChartsQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetFleetStatusQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetOperationalMetricsQuery;
 import com.nexus.rinde.dashboard.domain.model.queries.GetTripSummaryQuery;
 import com.nexus.rinde.dashboard.domain.services.DashboardQueryService;
+import com.nexus.rinde.dashboard.interfaces.rest.resources.DashboardChartsResource;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.FleetStatusResource;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.OperationalMetricsResource;
 import com.nexus.rinde.dashboard.interfaces.rest.resources.TripSummaryResource;
@@ -128,6 +130,39 @@ public class DashboardController {
                 parseDate(from, "La fecha de inicio"),
                 parseDate(to, "La fecha de fin")));
     return ResponseEntity.ok(metrics);
+  }
+
+  @GetMapping("/charts")
+  @PreAuthorize("hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')")
+  @Operation(
+      summary = "Series agregadas para gráficos del panel operativo",
+      description =
+          "Devuelve los gastos aprobados en PEN por categoría, los conteos de viajes por estado"
+              + " y los diez vehículos con mayor gasto en el periodo indicado.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Series para gráficos"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Fecha con formato inválido o periodo con fin anterior al inicio",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public ResponseEntity<DashboardChartsResource> getCharts(
+      @Parameter(description = "Primer día del periodo, en formato AAAA-MM-DD.", example = "2026-11-01")
+          @RequestParam(name = "from", required = false)
+          String from,
+      @Parameter(description = "Último día del periodo, en formato AAAA-MM-DD.", example = "2026-11-30")
+          @RequestParam(name = "to", required = false)
+          String to) {
+    DashboardChartsResource charts =
+        dashboardQueryService.handle(
+            new GetDashboardChartsQuery(
+                TenantContext.tenantId(),
+                parseDate(from, "La fecha de inicio"),
+                parseDate(to, "La fecha de fin")));
+    return ResponseEntity.ok(charts);
   }
 
   private static LocalDate parseDate(String value, String label) {

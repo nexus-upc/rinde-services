@@ -2,7 +2,9 @@ package com.nexus.rinde.iam.application.internal.commandservices;
 
 import com.nexus.rinde.iam.application.internal.TokenValidityProperties;
 import com.nexus.rinde.iam.domain.model.aggregates.User;
+import com.nexus.rinde.iam.domain.model.commands.ChangeCurrentUserPasswordCommand;
 import com.nexus.rinde.iam.domain.model.commands.InviteUserCommand;
+import com.nexus.rinde.iam.domain.model.commands.UpdateCurrentUserProfileCommand;
 import com.nexus.rinde.iam.domain.model.commands.UpdateUserCommand;
 import com.nexus.rinde.iam.domain.model.valueobjects.Email;
 import com.nexus.rinde.iam.domain.services.UserCommandService;
@@ -12,8 +14,10 @@ import com.nexus.rinde.shared.domain.exceptions.ConflictException;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import java.time.Clock;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Invita, cambia el rol y deshabilita usuarios de la empresa del administrador. TODO: el diseño no
@@ -71,5 +75,17 @@ public class UserCommandServiceImpl implements UserCommandService {
       user.disable();
     }
     return userRepository.save(user);
+  }
+
+  @Override
+  public User handle(UpdateCurrentUserProfileCommand command) {
+    throw new ResponseStatusException(
+        HttpStatus.NOT_IMPLEMENTED, "Funcionalidad pendiente de implementar en S4-28.");
+  }
+
+  @Override
+  public void handle(ChangeCurrentUserPasswordCommand command) {
+    throw new ResponseStatusException(
+        HttpStatus.NOT_IMPLEMENTED, "Funcionalidad pendiente de implementar en S4-28.");
   }
 }

@@ -19,6 +19,7 @@ Puerto 8084. Swagger: http://localhost:8084/swagger-ui.html. Flyway crea el esqu
 |---|---|---|
 | POST | `/api/v1/trips/{tripId}/expenses` | Registro del gasto por el conductor, idempotente por `idempotencyKey` (US21). Nace en `PENDING_SUPPORT`. |
 | GET | `/api/v1/trips/{tripId}/expenses` | Gastos de un viaje (US23). |
+| GET | `/api/v1/expenses` | Bandeja global de gastos con filtros y paginación, pendiente (S4-12). |
 | GET | `/api/v1/expenses/{id}` | Detalle del gasto con los metadatos de su comprobante. |
 | PATCH | `/api/v1/expenses/{id}/status` | Aprobación u observación con motivo, por ADMINISTRATOR u OPERATIONS_MANAGER (US24). |
 | POST | `/api/v1/expenses/sync` | Lote de gastos registrados sin conexión; informa los rechazados (US22). |
@@ -42,7 +43,10 @@ Configuración en `application.yml`:
 
 | Variable | Valor por defecto | Uso |
 |---|---|---|
-| `RINDE_EVIDENCE_STORAGE_PATH` | `./data/evidences` | Carpeta de los archivos. |
+| `RINDE_EVIDENCE_STORAGE_TYPE` | `local` | Adaptador activo (`local` o `azure-blob`). |
+| `RINDE_EVIDENCE_STORAGE_PATH` | `./data/evidences` | Carpeta de los archivos locales. |
+| `RINDE_EVIDENCE_BLOB_CONNECTION_STRING` | (vacío) | Cadena de conexión para Azure Blob Storage. |
+| `RINDE_EVIDENCE_BLOB_CONTAINER` | (vacío) | Nombre del contenedor privado en Azure Blob Storage. |
 | `RINDE_EVIDENCE_MAX_SIZE_BYTES` | `5242880` | Tamaño máximo de cada comprobante. |
 
 ## Endpoints internos
@@ -52,12 +56,12 @@ Sin JWT y fuera del gateway. Base `/api/internal/v1/expenses/tenants/{tenantId}`
 | Ruta | Lo consume |
 |---|---|
 | `/trips/{tripId}/approved` | Settlement, para calcular la liquidación |
-| `/trips/{tripId}` | Dashboard, para el resumen del viaje |
-| (raíz) | Dashboard, para las métricas de la empresa |
+| `/trips/{tripId}` | Dashboard, para el resumen del viaje (incluye `tripId`) |
+| (raíz) | Dashboard, para las métricas y gráficos de la empresa (incluye `tripId`) |
 
 ## Eventos
 
-Consume `settlement.closed` y bloquea los gastos del viaje. Registra el `eventId` en `processed_settlement_events`, así que una entrega repetida no tiene efecto. Los mensajes que fallan quedan en `rinde.events.expense.settlement-events.dead`.
+Publica `expense.registered` en `rinde.events` después del commit al crearse un gasto nuevo (individual o en sincronización, nunca en duplicados idempotentes). Consume `settlement.closed` y bloquea los gastos del viaje. Registra el `eventId` en `processed_settlement_events`, así que una entrega repetida no tiene efecto. Los mensajes que fallan quedan en `rinde.events.expense.settlement-events.dead`.
 
 ## Límites conocidos
 

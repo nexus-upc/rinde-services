@@ -4,13 +4,17 @@ import com.nexus.rinde.expense.domain.model.aggregates.Expense;
 import com.nexus.rinde.expense.domain.model.queries.GetEvidenceContentQuery;
 import com.nexus.rinde.expense.domain.model.queries.GetExpenseByIdQuery;
 import com.nexus.rinde.expense.domain.model.queries.GetExpensesByTripQuery;
+import com.nexus.rinde.expense.domain.model.queries.ListExpensesQuery;
 import com.nexus.rinde.expense.domain.model.valueobjects.EvidenceContent;
+import com.nexus.rinde.expense.domain.model.valueobjects.PagedExpenses;
 import java.util.List;
 
 /** Contrato de casos de uso de consulta de gastos. */
 public interface ExpenseQueryService {
 
   List<Expense> handle(GetExpensesByTripQuery query);
+
+  PagedExpenses handle(ListExpensesQuery query);
 
   Expense handle(GetExpenseByIdQuery query);
 

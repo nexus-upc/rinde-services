@@ -16,6 +16,7 @@ public record IncidentResource(
     @Schema(example = "Falla en el freno neumático") String description,
     @Schema(example = "https://storage.rinde.pe/evidences/incidencia-1.jpg", nullable = true)
         String evidenceUrl,
+    @Schema(nullable = true) IncidentEvidenceResource evidence,
     @Schema(example = "OPEN") IncidentStatus status,
     @Schema(example = "2026-11-09T13:20:00Z") Instant reportedAt,
     @Schema(nullable = true) IncidentResolutionResource resolution,

@@ -24,6 +24,9 @@ Los secretos y los datos de conexión se leen del archivo `.env` en la raíz del
 | `RINDE_PLATFORM_BOOTSTRAP_*` | Alta inicial optativa del dueño: `ENABLED`, `NAME`, `EMAIL` y `PASSWORD`. Solo en el entorno privado; no modifica una cuenta existente. |
 | `RINDE_DEMO_MAILBOX_ENABLED` | Habilita el buzón de demostración. Por defecto `false`. |
 | `RINDE_DEMO_MAILBOX_ENCRYPTION_KEY` | Clave AES de 64 caracteres hexadecimales para cifrar los tokens del buzón. Obligatoria si el buzón está habilitado. |
+| `RINDE_MAIL_PROVIDER` | Proveedor de correo transaccional (`demo` por defecto o `azure`). En perfiles `prod` y `production` exige `azure`. |
+| `RINDE_ACS_CONNECTION_STRING` | Cadena de conexión de Azure Communication Services Email cuando el proveedor es `azure`. |
+| `RINDE_MAIL_SENDER` | Dirección remitente verificada en Azure Communication Services Email. |
 
 El puerto del servicio es el 8081 (`server.port` en `application.yml`). La vigencia de los enlaces de invitación, verificación y recuperación se configura en `rinde.iam.tokens`.
 
@@ -52,7 +55,7 @@ CREATE DATABASE rinde_iam;
 CREATE DATABASE rinde_iam_test;
 ```
 
-Al arrancar, Flyway crea el esquema `iam` y aplica las migraciones de `src/main/resources/db/migration/iam`: V1 con empresas, usuarios y tokens de acceso; V2 con los recibos de eventos de suscripción; V3 con la cuenta del dueño, la suspensión administrativa y la auditoría de plataforma; V4 con `iam.demo_mail_messages`; y V5 con `iam.demo_requests`, las solicitudes de demostración de la landing.
+Al arrancar, Flyway crea el esquema `iam` y aplica las migraciones de `src/main/resources/db/migration/iam`: V1 con empresas, usuarios y tokens de acceso; V2 con los recibos de eventos de suscripción; V3 con la cuenta del dueño, la suspensión administrativa y la auditoría de plataforma; V4 con `iam.demo_mail_messages`; V5 con `iam.demo_requests`, las solicitudes de demostración de la landing; y V6 con `phone` y `address` en `iam.tenants`.
 
 ## Ejecución
 
@@ -82,6 +85,10 @@ Endpoints públicos. Los de acceso y registro no llevan JWT; el resto requiere `
 | POST | `/api/v1/tenants` | Registro de empresa y de su administrador (US08). |
 | POST | `/api/v1/tenants/{id}/verification` | Verificación del correo de la empresa (US08). |
 | GET | `/api/v1/users/me` | Perfil del usuario que inicia sesión, con los datos de su empresa (cualquier rol). Responde `{id, fullName, email, role, status, tenant: {id, tradeName, ruc, status}}`. |
+| PATCH | `/api/v1/users/me` | Actualización del nombre completo del usuario actual, pendiente (S4-28). |
+| POST | `/api/v1/users/me/password` | Cambio de contraseña del usuario actual, pendiente (S4-28). |
+| GET | `/api/v1/tenants/current` | Perfil extendido de la empresa actual con `phone` y `address`, pendiente (S4-28). |
+| PATCH | `/api/v1/tenants/current` | Edición de datos de la empresa actual por ADMINISTRATOR, pendiente (S4-28). |
 | GET | `/api/v1/users` | Listado de usuarios de la empresa (US11). Con `?role=DRIVER` también lo usa el responsable de operaciones, que solo ve cuentas DRIVER de su empresa; sin `role` o con otro rol responde 403. Un rol inexistente responde 400. |
 | POST | `/api/v1/users` | Invitación de usuario (US11). |
 | PATCH | `/api/v1/users/{id}` | Cambio de rol o de estado de un usuario (US11). |

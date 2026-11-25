@@ -3,10 +3,14 @@ package com.nexus.rinde.gateway;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.delete;
+import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.patch;
+import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
@@ -358,5 +362,62 @@ class GatewayRoutingIntegrationTest extends AbstractGatewayIntegrationTest {
         .expectBody()
         .jsonPath("$.status")
         .isEqualTo("UP");
+  }
+
+  @Test
+  void routesSprint4PublicEndpointsToEachOwningServiceAndRequiresJwtForCurrentTenant() {
+    String token = validToken();
+
+    webTestClient.get().uri("/api/v1/tenants/current").exchange().expectStatus().isUnauthorized();
+
+    IAM.stubFor(get(urlEqualTo("/api/v1/tenants/current")).willReturn(okJson("{\"id\":\"t1\"}")));
+    IAM.stubFor(patch(urlEqualTo("/api/v1/tenants/current")).willReturn(okJson("{\"id\":\"t1\"}")));
+    IAM.stubFor(patch(urlEqualTo("/api/v1/users/me")).willReturn(okJson("{\"id\":\"u1\"}")));
+    IAM.stubFor(post(urlEqualTo("/api/v1/users/me/password")).willReturn(aResponse().withStatus(204)));
+    EXPENSE.stubFor(get(urlEqualTo("/api/v1/expenses")).willReturn(okJson("{\"items\":[]}")));
+    FLEET.stubFor(get(urlEqualTo("/api/v1/vehicles/v1/history")).willReturn(okJson("{\"items\":[]}")));
+    INCIDENT.stubFor(post(urlEqualTo("/api/v1/incidents/i1/evidences")).willReturn(aResponse().withStatus(201).withBody("{}")));
+    INCIDENT.stubFor(get(urlEqualTo("/api/v1/incidents/i1/evidences/e1/content")).willReturn(aResponse().withStatus(200)));
+    MONOLITH.stubFor(get(urlEqualTo("/api/v1/dashboard/charts")).willReturn(okJson("{}")));
+    MONOLITH.stubFor(get(urlEqualTo("/api/v1/notifications")).willReturn(okJson("{\"items\":[]}")));
+    MONOLITH.stubFor(get(urlEqualTo("/api/v1/notifications/unread-count")).willReturn(okJson("{\"count\":0}")));
+    MONOLITH.stubFor(patch(urlEqualTo("/api/v1/notifications/n1/read")).willReturn(aResponse().withStatus(204)));
+    MONOLITH.stubFor(post(urlEqualTo("/api/v1/notifications/read-all")).willReturn(aResponse().withStatus(204)));
+    MONOLITH.stubFor(post(urlEqualTo("/api/v1/notifications/devices")).willReturn(aResponse().withStatus(204)));
+    MONOLITH.stubFor(delete(urlEqualTo("/api/v1/notifications/devices/tok1")).willReturn(aResponse().withStatus(204)));
+
+    webTestClient.get().uri("/api/v1/tenants/current").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isOk();
+    webTestClient.patch().uri("/api/v1/tenants/current").header(AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON).bodyValue("{}").exchange().expectStatus().isOk();
+    webTestClient.patch().uri("/api/v1/users/me").header(AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON).bodyValue("{\"fullName\":\"Ana\"}").exchange().expectStatus().isOk();
+    webTestClient.post().uri("/api/v1/users/me/password").header(AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON).bodyValue("{\"currentPassword\":\"12345678\",\"newPassword\":\"87654321\"}").exchange().expectStatus().isNoContent();
+
+    webTestClient.get().uri("/api/v1/expenses").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isOk();
+    webTestClient.get().uri("/api/v1/vehicles/v1/history").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isOk();
+    webTestClient.post().uri("/api/v1/incidents/i1/evidences").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isCreated();
+    webTestClient.get().uri("/api/v1/incidents/i1/evidences/e1/content").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isOk();
+
+    webTestClient.get().uri("/api/v1/dashboard/charts").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isOk();
+    webTestClient.get().uri("/api/v1/notifications").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isOk();
+    webTestClient.get().uri("/api/v1/notifications/unread-count").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isOk();
+    webTestClient.patch().uri("/api/v1/notifications/n1/read").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isNoContent();
+    webTestClient.post().uri("/api/v1/notifications/read-all").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isNoContent();
+    webTestClient.post().uri("/api/v1/notifications/devices").header(AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON).bodyValue("{\"token\":\"tok1\",\"platform\":\"ANDROID\"}").exchange().expectStatus().isNoContent();
+    webTestClient.delete().uri("/api/v1/notifications/devices/tok1").header(AUTHORIZATION, "Bearer " + token).exchange().expectStatus().isNoContent();
+
+    IAM.verify(getRequestedFor(urlEqualTo("/api/v1/tenants/current")));
+    IAM.verify(patchRequestedFor(urlEqualTo("/api/v1/tenants/current")));
+    IAM.verify(patchRequestedFor(urlEqualTo("/api/v1/users/me")));
+    IAM.verify(postRequestedFor(urlEqualTo("/api/v1/users/me/password")));
+    EXPENSE.verify(getRequestedFor(urlEqualTo("/api/v1/expenses")));
+    FLEET.verify(getRequestedFor(urlEqualTo("/api/v1/vehicles/v1/history")));
+    INCIDENT.verify(postRequestedFor(urlEqualTo("/api/v1/incidents/i1/evidences")));
+    INCIDENT.verify(getRequestedFor(urlEqualTo("/api/v1/incidents/i1/evidences/e1/content")));
+    MONOLITH.verify(getRequestedFor(urlEqualTo("/api/v1/dashboard/charts")));
+    MONOLITH.verify(getRequestedFor(urlEqualTo("/api/v1/notifications")));
+    MONOLITH.verify(getRequestedFor(urlEqualTo("/api/v1/notifications/unread-count")));
+    MONOLITH.verify(patchRequestedFor(urlEqualTo("/api/v1/notifications/n1/read")));
+    MONOLITH.verify(postRequestedFor(urlEqualTo("/api/v1/notifications/read-all")));
+    MONOLITH.verify(postRequestedFor(urlEqualTo("/api/v1/notifications/devices")));
+    MONOLITH.verify(deleteRequestedFor(urlEqualTo("/api/v1/notifications/devices/tok1")));
   }
 }
