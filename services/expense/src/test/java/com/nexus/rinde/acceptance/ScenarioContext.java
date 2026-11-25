@@ -26,6 +26,8 @@ public class ScenarioContext {
   private final Map<String, String> userRoles = new HashMap<>();
   private final Map<String, String> accessTokens = new HashMap<>();
   private final Map<String, String> tripIds = new HashMap<>();
+  private final Map<String, UUID> driverIds = new HashMap<>();
+  private final Map<String, UUID> tripDrivers = new HashMap<>();
   private final Map<String, String> expenseIds = new HashMap<>();
   private MvcResult lastResult;
   private String currentAdministratorToken;
@@ -117,6 +119,22 @@ public class ScenarioContext {
 
   public String tripIdOf(String name) {
     return tripIds.get(name);
+  }
+
+  public void rememberDriverId(String email, UUID driverId) {
+    driverIds.put(email, driverId);
+  }
+
+  public UUID driverIdOf(String email) {
+    return driverIds.get(email);
+  }
+
+  public void rememberTripDriverId(String tripName, UUID driverId) {
+    tripDrivers.put(tripName, driverId);
+  }
+
+  public UUID tripDriverIdOf(String tripName) {
+    return tripDrivers.get(tripName);
   }
 
   public void rememberExpenseId(String key, String expenseId) {

@@ -856,17 +856,19 @@ Los tres correos corresponden a los eventos publicados por `Tenant` y `User`, co
 - **Responsable y tareas:** Pedro (`S4-07`, `S4-08`, `S4-09`, `S4-10`, más `S4-24` en C5).
 - **Rutas nuevas del móvil:** únicamente subida de foto de incidencia en `C4` (`POST /api/v1/incidents/{id}/evidences`) y registro/baja de token push en `C5` (`POST /api/v1/notifications/devices` y `DELETE /api/v1/notifications/devices/{token}`). El resto son rutas ya existentes en `develop`.
 
-#### Resumen de endpoints que consume el móvil (comportamiento objetivo)
+#### Resumen de endpoints que consume el móvil (comportamiento vigente)
 
-| Endpoint | Servicio | Entrada gateway | `@PreAuthorize` objetivo | Validación de alcance para `DRIVER` |
+| Endpoint | Servicio | Entrada gateway | `@PreAuthorize` vigente | Validación de alcance para `DRIVER` |
 |---|---|---|---|---|
 | `GET /api/v1/trips/assigned-to-me` | `trip` | `trip-service` (8) | `hasRole('DRIVER')` | Resuelve `driverId` por `userId` en Fleet y lista solo sus viajes. |
 | `GET /api/v1/trips/{id}` | `trip` | `trip-service` (8) | `hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER','DRIVER')` | Para `DRIVER`, valida `trip.isAssignedTo(driverId)`; si no coincide, responde `404`. |
-| `POST /api/v1/trips/{tripId}/expenses` (cambia en `S4-04`) | `expense` | `expense-service` (6) | `hasRole('DRIVER')` (cambia en `S4-04`) | Exige rol `DRIVER` y que el viaje esté asignado al conductor; si no, `403` con `"Solo el conductor asignado al viaje puede registrar gastos."` (cambia en `S4-04`). |
+| `POST /api/v1/trips/{tripId}/expenses` | `expense` | `expense-service` (6) | `hasRole('DRIVER')` | Exige rol `DRIVER`, resuelve su `driverId` en Fleet y valida asignación al viaje en Trip; si no coincide, responde `403` con `"Solo el conductor asignado al viaje puede registrar gastos."`. |
 | `POST /api/v1/expenses/{expenseId}/evidences` | `expense` | `expense-service` (6) | `hasRole('DRIVER')` | Verifica `expense.isByDriver(userId)`; si es otro conductor responde `403`. |
-| `POST /api/v1/expenses/sync` (cambia en `S4-04`) | `expense` | `expense-service` (6) | `hasRole('DRIVER')` (cambia en `S4-04`) | Exige rol `DRIVER`; si algún ítem corresponde a un viaje no asignado al conductor, se rechaza el ítem con código `TRIP_NOT_ASSIGNED` sin fallar el lote (cambia en `S4-04`). |
-| `GET /api/v1/trips/{tripId}/settlement` (cambia en `S4-04`) | `core` | `monolith-trip-children` (5) | `isAuthenticated()` | Un `DRIVER` solo consulta viajes asignados a él; si no, `404` con `"El viaje no existe."`, igual que `GET /api/v1/trips/{id}` (cambia en `S4-04`). |
-| `GET /api/v1/trips/{tripId}/advances` (cambia en `S4-04`) | `core` | `monolith-trip-children` (5) | `isAuthenticated()` | Un `DRIVER` solo consulta viajes asignados a él; si no, `404` con `"El viaje no existe."`, igual que `GET /api/v1/trips/{id}` (cambia en `S4-04`). |
+| `POST /api/v1/expenses/sync` | `expense` | `expense-service` (6) | `hasRole('DRIVER')` | Exige rol `DRIVER` y consulta Fleet una sola vez por petición; si algún ítem corresponde a un viaje no asignado al conductor, se rechaza el ítem con código `TRIP_NOT_ASSIGNED` sin fallar el lote. |
+| `GET /api/v1/trips/{tripId}/settlement` | `core` | `monolith-trip-children` (5) | `isAuthenticated()` | Un `DRIVER` solo consulta viajes asignados a él; si no, responde `404` con `"El viaje no existe."`, igual que `GET /api/v1/trips/{id}`. |
+| `GET /api/v1/settlements/{id}` | `core` | `monolith-service` (12) | `isAuthenticated()` | Un `DRIVER` solo consulta liquidaciones de viajes asignados a él; si no, responde `404` con `"La liquidación no existe."`. |
+| `GET /api/v1/settlements/{id}/export` | `core` | `monolith-service` (12) | `hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')` | Rol `DRIVER` recibe `403`. |
+| `GET /api/v1/trips/{tripId}/advances` | `core` | `monolith-trip-children` (5) | `isAuthenticated()` | Un `DRIVER` solo consulta viajes asignados a él; si no, responde `404` con `"El viaje no existe."`, igual que `GET /api/v1/trips/{id}`. |
 | `POST /api/v1/trips/{tripId}/incidents` | `incident` | `incident-service` (6) | `hasRole('DRIVER')` | Consulta Trip y Fleet; exige viaje `IN_ROUTE` y conductor asignado (`403` si no es el asignado). |
 
 #### Detalle de petición, respuesta y errores por endpoint
@@ -920,28 +922,28 @@ Los tres correos corresponden a los eventos publicados por `Tenant` y `User`, co
 
    - Error: `404` `"El viaje no existe."` (también cuando pertenece a otro conductor).
 
-3. **`POST /api/v1/trips/{tripId}/expenses` (cambia en `S4-04`):**
+3. **`POST /api/v1/trips/{tripId}/expenses`:**
    - Petición: `{ "category": "FUEL", "amount": 150.00, "currency": "PEN", "expenseDate": "2026-11-26", "idempotencyKey": "EXP-MOBILE-0001" }`.
    - Respuesta `201 Created` (con `Location: /api/v1/expenses/{id}`): `ExpenseResource` en estado `PENDING_SUPPORT` y `evidence: null`.
-   - Errores: `400` validación (`"El monto debe ser mayor a cero."`), `403` `"Solo el conductor asignado al viaje puede registrar gastos."` (o `"No tiene permisos para realizar esta operación."` si el rol no es `DRIVER`, cambia en `S4-04`), `404` `"El viaje no existe."`, `409` `"El viaje todavía no ha iniciado."`, `"El viaje ya fue liquidado."` o `"La clave de idempotencia ya fue utilizada."`.
+   - Errores: `400` validación (`"El monto debe ser mayor a cero."`), `403` `"Solo el conductor asignado al viaje puede registrar gastos."` (o `"No tiene permisos para realizar esta operación."` si el rol no es `DRIVER`), `404` `"El viaje no existe."`, `409` `"El viaje todavía no ha iniciado."`, `"El viaje ya fue liquidado."` o `"La clave de idempotencia ya fue utilizada."`, `503` `"No se pudo consultar el estado del viaje en Trip."` o `"No se pudo consultar el conductor en Fleet."`.
 
 4. **`POST /api/v1/expenses/{expenseId}/evidences`:**
    - Petición: `multipart/form-data`, campo `file` (JPEG, PNG, WEBP o PDF; máximo 5 MB por defecto).
    - Respuesta `201 Created` (con `Location: /api/v1/expenses/{expenseId}/evidences/{evidenceId}/content`): `ExpenseResource` con `status: "REGISTERED"` y `evidence` poblado (`contentUrl` incluido).
    - Errores: `400` (`"Adjunte el comprobante en el campo file."`, `"El archivo del comprobante está vacío."`, `"Formato no permitido. Adjunte una foto en JPEG, PNG o WEBP, o un PDF."`), `403` `"Solo el conductor que registró el gasto puede adjuntar su comprobante."`, `404` `"El gasto no existe."`, `409` `"El gasto se encuentra bloqueado por liquidación cerrada."`, `413`.
 
-5. **`POST /api/v1/expenses/sync` (cambia en `S4-04`):**
+5. **`POST /api/v1/expenses/sync`:**
    - Petición: lista JSON de `SyncExpenseItemResource`: `[{ "tripId": "...", "category": "TOLL", "amount": 12.50, "currency": "PEN", "expenseDate": "2026-11-26", "idempotencyKey": "OFFLINE-EXP-001" }]`.
-   - Respuesta `200 OK`: `SyncExpensesResponseResource` (`totalReceived`, `synchronizedCount`, `items` de `ExpenseResource`, `rejectedCount`, `rejected` con `{ idempotencyKey, reason, code }` donde `code` es `TRIP_NOT_FOUND`, `TRIP_NOT_ASSIGNED` (cambia en `S4-04`, `"Solo el conductor asignado al viaje puede registrar gastos."`), `TRIP_NOT_STARTED`, `TRIP_SETTLED`, `INVALID_EXPENSE`, `DUPLICATE_KEY`).
-   - Error de rol: `403` `"No tiene permisos para realizar esta operación."` si el rol no es `DRIVER` (cambia en `S4-04`).
+   - Respuesta `200 OK`: `SyncExpensesResponseResource` (`totalReceived`, `synchronizedCount`, `items` de `ExpenseResource`, `rejectedCount`, `rejected` con `{ idempotencyKey, reason, code }` donde `code` es `TRIP_NOT_FOUND`, `TRIP_NOT_ASSIGNED` (`"Solo el conductor asignado al viaje puede registrar gastos."`), `TRIP_NOT_STARTED`, `TRIP_SETTLED`, `INVALID_EXPENSE`, `DUPLICATE_KEY`).
+   - Error de rol y disponibilidad: `403` `"No tiene permisos para realizar esta operación."` si el rol no es `DRIVER`; `503` si Trip o Fleet no responden para que el cliente mantenga el lote pendiente de reintento.
 
-6. **`GET /api/v1/trips/{tripId}/settlement` (cambia en `S4-04`):**
+6. **`GET /api/v1/trips/{tripId}/settlement` y `GET /api/v1/settlements/{id}`:**
    - Respuesta `200 OK`: `SettlementResource` (`id`, `tenantId`, `tripId`, `driverId`, `status`, `advanceAmount`, `advanceCurrency`, `expenseTotalAmount`, `expenseTotalCurrency`, `advanceBalance`, `createdAt`, `updatedAt`).
-   - Errores: `404` `"No existe liquidación para este viaje."`, y para un `DRIVER` sobre un viaje que no le está asignado `404` `"El viaje no existe."` (cambia en `S4-04`).
+   - Errores: en `/trips/{tripId}/settlement`, `404` `"No existe liquidación para este viaje."`, y para un `DRIVER` sobre un viaje que no le está asignado `404` `"El viaje no existe."`; en `/settlements/{id}`, `404` `"La liquidación no existe."` (incluyendo cuando pertenece a un viaje ajeno para `DRIVER`). `GET /api/v1/settlements/{id}/export` exige `hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')`.
 
-7. **`GET /api/v1/trips/{tripId}/advances` (cambia en `S4-04`):**
+7. **`GET /api/v1/trips/{tripId}/advances`:**
    - Respuesta `200 OK`: lista de `TripAdvanceResource` (`id`, `tripId`, `amount`, `currency`, `deliveryMethod`, `registeredBy`, `registeredAt`) ordenada por creación ascendente, o `[]` si el viaje no tiene adelantos.
-   - Error: `404` `"El viaje no existe."` (también para un `DRIVER` sobre un viaje ajeno, cambia en `S4-04`).
+   - Error: `404` `"El viaje no existe."` (también para un `DRIVER` sobre un viaje ajeno).
 
 8. **`POST /api/v1/trips/{tripId}/incidents`:**
    - Petición: `{ "type": "BREAKDOWN", "description": "Falla en el freno neumático", "evidenceUrl": null, "idempotencyKey": "INC-OFFLINE-0001" }`.
@@ -968,7 +970,7 @@ Los tres correos corresponden a los eventos publicados por `Tenant` y `User`, co
 | C7. Perfil y configuración (Farid, S4-28) | Migración Flyway en `iam.tenants` (`phone`, `address`); actualización de `Tenant` manteniendo `TenantResource` sin cambios; nuevo recurso `CompanyProfileResource` y controlador `CurrentTenantController` con seguridad JWT en Swagger; firmas y DTO de `GET/PATCH /api/v1/tenants/current`, `PATCH /api/v1/users/me` (`CurrentUserResource`) y `POST /api/v1/users/me/password`. | Casos de uso de actualización de empresa, nombre de usuario y cambio de contraseña (rechazando contraseña igual a la actual), validaciones y errores, pruebas en `iam` y pantalla en web (`account-settings`). |
 | C8. Correo real (Flor, S4-27) | Puerto de envío de correo en `iam`; propiedades `rinde.mail.provider` (`demo` / `azure`), `RINDE_ACS_CONNECTION_STRING` y `RINDE_MAIL_SENDER`; dependencia de Azure Communication Services Email en `pom.xml`. | Adaptador de Azure Communication Services Email, integración del adaptador `demo` sin instanciarse con `azure` y validación obligatoria de `azure` en `prod`/`production`, más pruebas con dobles en `iam`. |
 | C9. Gráficos del tablero (Gabriel, S4-23) | Campo `tripId` aditivo en `InternalExpenseResource` (`expense`), `ExpenseSummary` (`core`) y sus dobles de prueba; records de respuesta (incluyendo `excludedCurrencies`) y firma de `GET /api/v1/dashboard/charts` en `DashboardController`. | Agregación por categoría, estado y top 10 de vehículos solo en `PEN`, listado de `excludedCurrencies`, manejo de `partial`, pruebas en `core` y gráficos en web. |
-| C10. Lo que usa el móvil (Pedro, S4-07 a S4-10) | Sin rutas nuevas (aplica C4 y C5). | En `S4-04`, restricción de consultas de liquidación/adelantos al conductor asignado (`404`) y exigencia de `DRIVER` asignado en registro y sincronización de gastos (`403` / `TRIP_NOT_ASSIGNED`). En `S4-07` a `S4-10`, pantallas, foto, cola offline, saldo y liquidación en `apps/mobile`. |
+| C10. Lo que usa el móvil (Pedro, S4-07 a S4-10) | Sin rutas nuevas (aplica C4 y C5). | En `S4-04`, restricción de consultas de liquidación/adelantos al conductor asignado (`404` en `/trips/{tripId}/settlement`, `/trips/{tripId}/advances` y `/settlements/{id}`), cierre de `/settlements/{id}/export` para `ADMINISTRATOR` y `OPERATIONS_MANAGER` (`403` para `DRIVER`), y exigencia de `DRIVER` asignado en registro y sincronización de gastos (`403` / `TRIP_NOT_ASSIGNED`). En `S4-07` a `S4-10`, pantallas, foto, cola offline, saldo y liquidación en `apps/mobile`. |
 
 ---
 
@@ -982,7 +984,7 @@ Los tres correos corresponden a los eventos publicados por `Tenant` y `User`, co
 6. **Detalle de incidencias y mantenimiento en `C3`:** `S4-B` agrega `description` de forma aditiva a `InternalIncidentResource` (también en `/open`); `items[].detail` de una incidencia usa `description`, `items[].status` es `null` en mantenimientos y `nextMaintenanceDate` es `null` si el vehículo no tiene mantenimientos.
 7. **Recursos y validaciones en `C7`:** `TenantResource` no cambia; `GET/PATCH /api/v1/tenants/current` usan `CompanyProfileResource` en `CurrentTenantController` con seguridad JWT en Swagger; `PATCH /api/v1/users/me` devuelve `CurrentUserResource`; `POST /api/v1/users/me/password` rechaza repetir la contraseña actual con `400` y `"La nueva contraseña debe ser distinta de la actual."`.
 8. **Paginación de plataforma (Convenciones 2.1):** los endpoints previos de plataforma conservan `PageResource` de `shared-kernel` sin cambios.
-9. **Permisos del conductor en `C10`:** se corrigen en `S4-04` (`404` `"El viaje no existe."` en liquidación y adelantos de viajes ajenos, `hasRole('DRIVER')` y asignación al viaje en gastos con `403` `"Solo el conductor asignado al viaje puede registrar gastos."` o rechazo `TRIP_NOT_ASSIGNED` en `sync`).
+9. **Permisos del conductor en `C10`:** se corrigen en `S4-04` (`404` `"El viaje no existe."` en liquidación por viaje y adelantos de viajes ajenos, `404` `"La liquidación no existe."` en `GET /api/v1/settlements/{id}` para viajes ajenos, `hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')` en `GET /api/v1/settlements/{id}/export`, y `hasRole('DRIVER')` con asignación al viaje en gastos con `403` `"Solo el conductor asignado al viaje puede registrar gastos."` o rechazo `TRIP_NOT_ASSIGNED` en `sync`).
 10. **Mapeo de `driverId` a `userId` para push (C5):** `S4-B` agrega `userId` de forma aditiva al recurso interno de conductores de Fleet y a `FleetDriverSummary` en `core` para resolver el destinatario.
 11. **Mensajes `400` de parámetros inválidos (Convenciones 2.1, 2.3, C2, C3, C6, C9):** se usa `BusinessRuleException` con mensajes explícitos para fechas (`"La fecha de inicio debe tener el formato AAAA-MM-DD."`, `"La fecha de fin debe tener el formato AAAA-MM-DD."`), estado en `C2` (`"El parámetro status contiene un estado de gasto inválido."`) y paginación (`"El número de página no puede ser negativo."`, `"El tamaño de página debe estar entre 1 y 100."`).
 12. **Convivencia de `C1` con la separación de Settlement (`S4-02`):** `S4-B` prepara solo la fachada local actual; al separar Settlement en `S4-02`, Gabriel convierte `SettlementContextFacade` en cliente HTTP y agrega `SETTLEMENT` a `unavailableSources` si no responde.

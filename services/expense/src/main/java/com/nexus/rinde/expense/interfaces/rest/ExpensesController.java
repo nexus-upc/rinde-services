@@ -88,12 +88,12 @@ public class ExpensesController {
   }
 
   @PostMapping("/api/v1/trips/{tripId}/expenses")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasRole('DRIVER')")
   @Operation(
       summary = "Registrar un gasto operativo (US21)",
       description =
-          "Registra un gasto vinculado a un viaje iniciado o finalizado. Nace en PENDING_SUPPORT;"
-              + " pasa a REGISTERED al subir su comprobante con POST"
+          "Registra un gasto vinculado a un viaje iniciado o finalizado asignado al conductor."
+              + " Nace en PENDING_SUPPORT; pasa a REGISTERED al subir su comprobante con POST"
               + " /api/v1/expenses/{expenseId}/evidences.")
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Gasto registrado exitosamente"),
@@ -107,6 +107,13 @@ public class ExpensesController {
     @ApiResponse(
         responseCode = "409",
         description = "Clave de idempotencia duplicada",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "503",
+        description = "Trip o Fleet no disponibles para validar el viaje o el conductor",
         content =
             @Content(
                 mediaType = "application/problem+json",
@@ -329,13 +336,14 @@ public class ExpensesController {
   }
 
   @PostMapping("/api/v1/expenses/sync")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasRole('DRIVER')")
   @Operation(
       summary = "Sincronizar lote de gastos registrados sin conexión (US22)",
       description =
-          "Permite a la aplicación móvil enviar un lote de gastos capturados offline. El proceso"
-              + " es idempotente y garantiza consistencia eventual en la rendición. Cada gasto"
-              + " guardado nace sin comprobante; su foto se sube después con su id.")
+          "Permite a la aplicación móvil enviar un lote de gastos capturados offline por el"
+              + " conductor asignado. El proceso es idempotente y garantiza consistencia eventual"
+              + " en la rendición. Cada gasto guardado nace sin comprobante; su foto se sube"
+              + " después con su id.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -345,6 +353,13 @@ public class ExpensesController {
     @ApiResponse(
         responseCode = "400",
         description = "Datos inválidos en el lote de gastos",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "503",
+        description = "Trip o Fleet no disponibles; el cliente debe reintentar el lote",
         content =
             @Content(
                 mediaType = "application/problem+json",

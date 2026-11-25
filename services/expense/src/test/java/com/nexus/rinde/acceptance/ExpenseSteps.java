@@ -200,6 +200,21 @@ public class ExpenseSteps {
   }
 
   @Cuando(
+      "el usuario {string} intenta registrar un gasto de tipo {string} por el monto {string}"
+          + " con clave {string} en el viaje {string}")
+  public void namedUserAttemptsExpense(
+      String email, String category, String amount, String idempotencyKey, String tripName)
+      throws Exception {
+    registerExpense(
+        context.accessTokenOf(email),
+        context.tripIdOf(tripName),
+        category,
+        amount,
+        "HOY+5",
+        idempotencyKey);
+  }
+
+  @Cuando(
       "el conductor intenta registrar un gasto de tipo {string} por el monto {string} en un viaje"
           + " que no existe")
   public void driverAttemptsExpenseOnUnknownTrip(String category, String amount)
@@ -339,6 +354,16 @@ public class ExpenseSteps {
             null));
   }
 
+  @Cuando("el administrador {string} intenta aprobar el gasto {string}")
+  public void namedAdminAttemptsApprove(String adminEmail, String expenseName) throws Exception {
+    context.record(
+        api.updateStatus(
+            context.accessTokenOf(adminEmail),
+            context.expenseIdOf(expenseName),
+            "APPROVED",
+            null));
+  }
+
   @Dado("que el administrador {string} aprobó el gasto {string}")
   public void namedAdministratorApprovesExpense(String email, String expenseName) throws Exception {
     context.record(
@@ -420,6 +445,25 @@ public class ExpenseSteps {
     JsonNode first = context.body().get("items").get(0);
     assertThat(first.get("status").asText()).isEqualTo(status);
     assertThat(first.get("evidence") == null || first.get("evidence").isNull()).isTrue();
+  }
+
+  @Cuando(
+      "el conductor {string} sincroniza un lote con un gasto para el viaje {string} y otro para el"
+          + " viaje {string}")
+  public void namedDriverSyncsBatchWithTwoTrips(
+      String email, String firstTrip, String secondTrip) throws Exception {
+    List<Map<String, Object>> items = new ArrayList<>();
+    items.add(syncItem(tripIdOrRandom(firstTrip), "KEY-SYNC-1-" + System.nanoTime()));
+    items.add(syncItem(tripIdOrRandom(secondTrip), "KEY-SYNC-2-" + System.nanoTime()));
+    context.record(api.sync(context.accessTokenOf(email), items));
+  }
+
+  @Cuando("el usuario {string} intenta sincronizar un lote de gastos para el viaje {string}")
+  public void namedUserAttemptsSyncBatch(String email, String tripName) throws Exception {
+    context.record(
+        api.sync(
+            context.accessTokenOf(email),
+            List.of(syncItem(context.tripIdOf(tripName), "KEY-SYNC-ROL-" + System.nanoTime()))));
   }
 
   @Cuando("una persona sin token sincroniza un lote de gastos para el viaje {string}")

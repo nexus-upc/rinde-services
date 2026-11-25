@@ -129,7 +129,12 @@ public class TripAdvancesController {
   public ResponseEntity<List<TripAdvanceResource>> list(@PathVariable UUID tripId) {
     List<TripAdvanceResource> advances =
         settlementQueryService
-            .handle(new GetTripAdvancesQuery(TenantContext.tenantId(), tripId))
+            .handle(
+                new GetTripAdvancesQuery(
+                    TenantContext.tenantId(),
+                    tripId,
+                    TenantContext.userId(),
+                    TenantContext.role()))
             .stream()
             .map(TripAdvanceResourceFromEntityAssembler::toResource)
             .toList();

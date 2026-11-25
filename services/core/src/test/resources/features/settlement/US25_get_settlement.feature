@@ -34,3 +34,26 @@ Característica: US25 Consultar el detalle de una liquidación
   Escenario: Consultar liquidación requiere autenticación
     Cuando una persona sin token consulta la liquidación "liq"
     Entonces la respuesta tiene código 401
+
+  Escenario: Un administrador de otra empresa no puede consultar la liquidación
+    Dado que existe una empresa verificada con RUC "20987654321" y administrador "otro@otra.pe"
+    Y que el administrador "otro@otra.pe" inició sesión
+    Cuando el administrador consulta la liquidación "liq"
+    Entonces la respuesta tiene código 404
+    Y el mensaje de error es "La liquidación no existe."
+
+  Escenario: Otro conductor recibe 404 al consultar una liquidación ajena
+    Dado que el administrador invitó a "Marta Ruiz" con el correo "marta@andes.pe" y el rol "DRIVER"
+    Y que "marta@andes.pe" definió la contraseña "Clave-De-Marta-2026" con su enlace de invitación
+    Y que el conductor "marta@andes.pe" inició sesión
+    Cuando el conductor "marta@andes.pe" consulta la liquidación "liq"
+    Entonces la respuesta tiene código 404
+    Y el mensaje de error es "La liquidación no existe."
+
+  Escenario: El responsable de operaciones puede consultar la liquidación
+    Dado que el administrador invitó a "Óscar Pérez" con el correo "ops@andes.pe" y el rol "OPERATIONS_MANAGER"
+    Y que "ops@andes.pe" definió la contraseña "Clave-De-Ops-2026" con su enlace de invitación
+    Cuando el usuario "ops@andes.pe" consulta la liquidación "liq"
+    Entonces la respuesta tiene código 200
+    Y la respuesta incluye el campo "status" con el valor "OPEN"
+    Y la respuesta incluye el campo "tripId" con el id del viaje "viaje"

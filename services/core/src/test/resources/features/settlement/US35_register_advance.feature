@@ -69,3 +69,28 @@ Característica: US35 Registrar el adelanto de viáticos de un viaje
     Cuando el administrador consulta la liquidación del viaje "viaje"
     Entonces la respuesta tiene código 200
     Y la respuesta incluye el campo "advanceAmount" con el valor "500.0"
+
+  Escenario: Otro conductor recibe 404 al consultar los adelantos de un viaje ajeno
+    Cuando el administrador registra un adelanto de "300.00" soles por "CASH" para el viaje "viaje"
+    Y que el administrador invitó a "Marta Ruiz" con el correo "marta@andes.pe" y el rol "DRIVER"
+    Y que "marta@andes.pe" definió la contraseña "Clave-De-Marta-2026" con su enlace de invitación
+    Y que el conductor "marta@andes.pe" inició sesión
+    Cuando el conductor "marta@andes.pe" consulta los adelantos del viaje "viaje"
+    Entonces la respuesta tiene código 404
+    Y el mensaje de error es "El viaje no existe."
+
+  Escenario: El responsable de operaciones puede consultar los adelantos de cualquier viaje
+    Cuando el administrador registra un adelanto de "300.00" soles por "CASH" para el viaje "viaje"
+    Y que el administrador invitó a "Óscar Pérez" con el correo "ops@andes.pe" y el rol "OPERATIONS_MANAGER"
+    Y que "ops@andes.pe" definió la contraseña "Clave-De-Ops-2026" con su enlace de invitación
+    Cuando el usuario "ops@andes.pe" consulta los adelantos del viaje "viaje"
+    Entonces la respuesta tiene código 200
+    Y la respuesta contiene 1 elementos
+
+  Escenario: Un administrador de otra empresa no puede consultar los adelantos del viaje
+    Cuando el administrador registra un adelanto de "300.00" soles por "CASH" para el viaje "viaje"
+    Y que existe una empresa verificada con RUC "20987654321" y administrador "otro@otra.pe"
+    Y que el administrador "otro@otra.pe" inició sesión
+    Cuando el administrador consulta los adelantos del viaje "viaje"
+    Entonces la respuesta tiene código 404
+    Y el mensaje de error es "El viaje no existe."

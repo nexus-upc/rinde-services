@@ -18,7 +18,12 @@ public class TripStub {
   private final WireMockServer server = WireMockServices.server();
 
   public void setTripStatus(UUID tenantId, UUID tripId, String status) {
+    setTrip(tenantId, tripId, status, null);
+  }
+
+  public void setTrip(UUID tenantId, UUID tripId, String status, UUID driverId) {
     String path = "/api/internal/v1/trips/tenants/" + tenantId + "/" + tripId;
+    String quotedDriver = driverId == null ? "null" : "\"" + driverId + "\"";
     server.stubFor(
         get(urlEqualTo(path))
             .willReturn(
@@ -30,10 +35,11 @@ public class TripStub {
                       "status": "%s",
                       "origin": "Lima",
                       "destination": "Arequipa",
-                      "departureDate": "2026-11-01"
+                      "departureDate": "2026-11-01",
+                      "driverId": %s
                     }
                     """
-                        .formatted(tripId, status))));
+                        .formatted(tripId, status, quotedDriver))));
   }
 
   public void setTripNotFound(UUID tenantId, UUID tripId) {

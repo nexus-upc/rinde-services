@@ -4,7 +4,7 @@ Servicio de Expense & Evidence de RINDE by NEXUS: gastos del viaje con su compro
 
 ## Ejecución
 
-Requiere Java 21, PostgreSQL y RabbitMQ. Crear las bases `rinde_expense` y `rinde_expense_test`, copiar `.env.example` como `.env` y completar los valores (`DB_*`, `JWT_SECRET`, `IAM_SERVICE_URL`, `TRIP_SERVICE_URL` y `RABBITMQ_*`).
+Requiere Java 21, PostgreSQL y RabbitMQ. Crear las bases `rinde_expense` y `rinde_expense_test`, copiar `.env.example` como `.env` y completar los valores (`DB_*`, `JWT_SECRET`, `IAM_SERVICE_URL`, `TRIP_SERVICE_URL`, `FLEET_SERVICE_URL` y `RABBITMQ_*`).
 
 ```
 mvnw.cmd spring-boot:run
@@ -26,7 +26,7 @@ Puerto 8084. Swagger: http://localhost:8084/swagger-ui.html. Flyway crea el esqu
 | POST | `/api/v1/expenses/{expenseId}/evidences` | Sube o reemplaza el comprobante en formulario multipart, campo `file`. Solo el conductor que registró el gasto (US21, QA-05). |
 | GET | `/api/v1/expenses/{expenseId}/evidences/{evidenceId}/content` | Lee el archivo del comprobante con su `Content-Type` (US21, QA-05). |
 
-Antes de registrar, el servicio consulta a Trip el estado del viaje y a IAM el estado de la empresa. Un gasto bloqueado por una liquidación cerrada ya no se modifica ni acepta comprobantes.
+Antes de registrar o sincronizar, el servicio consulta a Trip el estado y conductor asignado del viaje, a Fleet el conductor vinculado al usuario y a IAM el estado de la empresa. Un gasto bloqueado por una liquidación cerrada ya no se modifica ni acepta comprobantes.
 
 ## Comprobantes
 

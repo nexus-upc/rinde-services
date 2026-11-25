@@ -18,6 +18,7 @@ public abstract class AbstractIntegrationTest {
   @Autowired protected CapturedEvents capturedEvents;
   @Autowired protected IamStub iamStub;
   @Autowired protected TripStub tripStub;
+  @Autowired protected FleetStub fleetStub;
   @Autowired protected TestTokens tokens;
   @Autowired protected MockMvc mockMvc;
   @Autowired protected ObjectMapper objectMapper;
@@ -30,6 +31,7 @@ public abstract class AbstractIntegrationTest {
     TestEvidenceStorage.registerPath(registry);
     registry.add("rinde.iam.service-url", WireMockServices::baseUrl);
     registry.add("rinde.trip.service-url", WireMockServices::baseUrl);
+    registry.add("rinde.fleet.service-url", WireMockServices::baseUrl);
     registry.add("spring.rabbitmq.listener.simple.auto-startup", () -> false);
   }
 

@@ -1,5 +1,6 @@
 package com.nexus.rinde.expense.infrastructure.trip;
 
+import com.nexus.rinde.expense.domain.model.valueobjects.TripSnapshot;
 import com.nexus.rinde.expense.domain.services.TripStatusService;
 import java.time.Duration;
 import java.util.Optional;
@@ -41,7 +42,7 @@ public class TripStatusHttpClient implements TripStatusService {
   }
 
   @Override
-  public Optional<String> findTripStatus(UUID tenantId, UUID tripId) {
+  public Optional<TripSnapshot> findTrip(UUID tenantId, UUID tripId) {
     try {
       TripInternalResponse response =
           restClient
@@ -49,7 +50,8 @@ public class TripStatusHttpClient implements TripStatusService {
               .uri(TRIP_PATH, tenantId, tripId)
               .retrieve()
               .body(TripInternalResponse.class);
-      return Optional.ofNullable(response).map(TripInternalResponse::status);
+      return Optional.ofNullable(response)
+          .map(body -> new TripSnapshot(body.tripId(), body.status(), body.driverId()));
     } catch (HttpClientErrorException.NotFound ex) {
       return Optional.empty();
     } catch (RestClientException ex) {

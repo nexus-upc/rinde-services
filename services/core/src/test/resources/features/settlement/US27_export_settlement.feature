@@ -30,3 +30,15 @@ Característica: US27 Exportar la liquidación como CSV
   Escenario: Exportar requiere autenticación
     Cuando una persona sin token exporta la liquidación "liq"
     Entonces la respuesta tiene código 401
+
+  Escenario: Un conductor no puede exportar la liquidación
+    Cuando el conductor "luis@andes.pe" intenta exportar la liquidación "liq"
+    Entonces la respuesta tiene código 403
+
+  Escenario: El responsable de operaciones puede exportar la liquidación
+    Dado que el administrador invitó a "Óscar Pérez" con el correo "ops@andes.pe" y el rol "OPERATIONS_MANAGER"
+    Y que "ops@andes.pe" definió la contraseña "Clave-De-Ops-2026" con su enlace de invitación
+    Cuando el usuario "ops@andes.pe" exporta la liquidación "liq"
+    Entonces la respuesta tiene código 200
+    Y la respuesta CSV contiene "settlementId"
+    Y la respuesta CSV contiene "status,OPEN"

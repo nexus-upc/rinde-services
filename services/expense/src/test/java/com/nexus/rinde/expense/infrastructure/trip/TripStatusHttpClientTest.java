@@ -2,6 +2,7 @@ package com.nexus.rinde.expense.infrastructure.trip;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.nexus.rinde.expense.domain.model.valueobjects.TripSnapshot;
 import com.nexus.rinde.support.AbstractIntegrationTest;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +24,20 @@ class TripStatusHttpClientTest extends AbstractIntegrationTest {
 
     Optional<String> status = tripClient.findTripStatus(tenantId, tripId);
     assertThat(status).contains("IN_TRIP");
+  }
+
+  @Test
+  @DisplayName("Consulta HTTP a Trip retorna estado y conductor asignado cuando el viaje existe")
+  void shouldReturnTripSnapshotWithDriverId() {
+    UUID tenantId = UUID.randomUUID();
+    UUID tripId = UUID.randomUUID();
+    UUID driverId = UUID.randomUUID();
+
+    tripStub.setTrip(tenantId, tripId, "IN_ROUTE", driverId);
+
+    Optional<TripSnapshot> trip = tripClient.findTrip(tenantId, tripId);
+    assertThat(trip)
+        .contains(new TripSnapshot(tripId, "IN_ROUTE", driverId));
   }
 
   @Test

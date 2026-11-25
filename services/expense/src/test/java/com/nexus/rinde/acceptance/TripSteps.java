@@ -44,35 +44,41 @@ public class TripSteps {
   public void administratorAssignsTrip(String tripName, String vehicleName, String driverEmail) {
     UUID tripId = UUID.fromString(context.tripIdOf(tripName));
     UUID tenantId = context.currentTenantId();
-    tripStub.setTripStatus(tenantId, tripId, "ASSIGNED");
+    UUID driverId = context.driverIdOf(driverEmail);
+    context.rememberTripDriverId(tripName, driverId);
+    tripStub.setTrip(tenantId, tripId, "ASSIGNED", driverId);
   }
 
   @Dado("que el conductor inicia el viaje {string}")
   public void driverStartsTrip(String tripName) {
     UUID tripId = UUID.fromString(context.tripIdOf(tripName));
     UUID tenantId = context.currentTenantId();
-    tripStub.setTripStatus(tenantId, tripId, "IN_ROUTE");
+    tripStub.setTrip(tenantId, tripId, "IN_ROUTE", context.tripDriverIdOf(tripName));
   }
 
   @Dado("que el conductor {string} inicia el viaje {string}")
   public void namedDriverStartsTrip(String driverEmail, String tripName) {
     UUID tripId = UUID.fromString(context.tripIdOf(tripName));
     UUID tenantId = context.currentTenantId();
-    tripStub.setTripStatus(tenantId, tripId, "IN_ROUTE");
+    UUID driverId = context.driverIdOf(driverEmail);
+    context.rememberTripDriverId(tripName, driverId);
+    tripStub.setTrip(tenantId, tripId, "IN_ROUTE", driverId);
   }
 
   @Dado("que el conductor finaliza el viaje {string}")
   public void driverFinishesTrip(String tripName) {
     UUID tripId = UUID.fromString(context.tripIdOf(tripName));
     UUID tenantId = context.currentTenantId();
-    tripStub.setTripStatus(tenantId, tripId, "FINISHED");
+    tripStub.setTrip(tenantId, tripId, "FINISHED", context.tripDriverIdOf(tripName));
   }
 
   @Dado("que el conductor {string} finaliza el viaje {string}")
   public void namedDriverFinishesTrip(String driverEmail, String tripName) {
     UUID tripId = UUID.fromString(context.tripIdOf(tripName));
     UUID tenantId = context.currentTenantId();
-    tripStub.setTripStatus(tenantId, tripId, "FINISHED");
+    UUID driverId = context.driverIdOf(driverEmail);
+    context.rememberTripDriverId(tripName, driverId);
+    tripStub.setTrip(tenantId, tripId, "FINISHED", driverId);
   }
 
   @Dado("que el administrador cierra la liquidación del viaje {string}")
@@ -91,7 +97,7 @@ public class TripSteps {
     if (adminId == null) {
       adminId = UUID.randomUUID();
     }
-    tripStub.setTripStatus(tenantId, tripId, "SETTLED");
+    tripStub.setTrip(tenantId, tripId, "SETTLED", context.tripDriverIdOf(tripName));
     settlementMessaging.receive(
         new ExpenseSettlementMessaging.SettlementClosedEvent(
             UUID.randomUUID(), Instant.now(), tenantId, tripId, adminId),
