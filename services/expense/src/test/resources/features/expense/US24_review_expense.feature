@@ -44,3 +44,10 @@ Característica: US24 Revisar y aprobar los gastos de un viaje
     Cuando el administrador aprueba el gasto "combustible"
     Entonces la respuesta tiene código 409
     Y el mensaje de error es "El gasto se encuentra bloqueado por liquidación cerrada."
+
+  Escenario: Un administrador de otra empresa no puede aprobar un gasto ajeno
+    Dado que existe otra empresa verificada con RUC "20987654321" y administrador "otro@otra.pe"
+    Y que el administrador de la otra empresa "otro@otra.pe" inició sesión
+    Cuando el administrador "otro@otra.pe" intenta aprobar el gasto "combustible"
+    Entonces la respuesta tiene código 404
+    Y el mensaje de error es "El gasto no existe."

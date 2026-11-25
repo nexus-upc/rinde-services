@@ -254,7 +254,9 @@ class ExpenseEvidenceIntegrationTest extends AbstractIntegrationTest {
   @Test
   @DisplayName("Sincronizar un gasto con el campo evidence heredado lo guarda sin comprobante")
   void shouldSyncExpenseWithoutEvidenceWhenLegacyFieldIsSent() throws Exception {
-    tripStub.setTripStatus(tenantId, tripId, "IN_ROUTE");
+    UUID fleetDriverId = UUID.randomUUID();
+    fleetStub.setDriverForUser(tenantId, driverId, fleetDriverId);
+    tripStub.setTrip(tenantId, tripId, "IN_ROUTE", fleetDriverId);
     Map<String, Object> evidence =
         Map.of("imageUrl", "https://storage.rinde.pe/evidences/heredada.jpg", "fileSizeBytes", 2048L);
     Map<String, Object> item =

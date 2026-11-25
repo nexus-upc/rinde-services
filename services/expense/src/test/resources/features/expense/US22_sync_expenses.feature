@@ -90,3 +90,27 @@ Característica: US22 Sincronizar gastos registrados sin conexión (Offline Sync
     Entonces la respuesta tiene código 200
     Y la respuesta incluye el campo "synchronizedCount" con el valor "1"
     Y el primer gasto sincronizado tiene el estado "PENDING_SUPPORT" y no tiene comprobante
+
+  Escenario: Lote con un gasto de un viaje asignado a otro conductor rechaza solo ese ítem
+    Dado que el administrador invitó a "Marta Ruiz" con el correo "marta@andes.pe" y el rol "DRIVER"
+    Y que "marta@andes.pe" definió la contraseña "Clave-De-Marta-2026" con su enlace de invitación
+    Y que existe el vehículo "camión dos"
+    Y que el administrador programa el viaje "viaje de marta" de "Lima" a "Ica" con carga "Cajas" y salida "HOY+6"
+    Y que el administrador asigna el viaje "viaje de marta" al vehículo "camión dos" y al conductor "marta@andes.pe"
+    Y que el conductor "marta@andes.pe" inició sesión
+    Y que el conductor "marta@andes.pe" inicia el viaje "viaje de marta"
+    Cuando el conductor "luis@andes.pe" sincroniza un lote con un gasto para el viaje "viaje" y otro para el viaje "viaje de marta"
+    Entonces la respuesta tiene código 200
+    Y la respuesta incluye el campo "synchronizedCount" con el valor "1"
+    Y la respuesta incluye el campo "rejectedCount" con el valor "1"
+    Y el elemento 0 de rechazados tiene el campo "code" con el valor "TRIP_NOT_ASSIGNED"
+    Y el elemento 0 de rechazados tiene el campo "reason" con el valor "Solo el conductor asignado al viaje puede registrar gastos."
+    Cuando el conductor consulta los gastos del viaje "viaje"
+    Entonces la lista de gastos contiene 1 elementos
+
+  Escenario: Un responsable de operaciones no puede sincronizar gastos
+    Dado que el administrador invitó a "Óscar Pérez" con el correo "ops@andes.pe" y el rol "OPERATIONS_MANAGER"
+    Y que "ops@andes.pe" definió la contraseña "Clave-De-Ops-2026" con su enlace de invitación
+    Cuando el usuario "ops@andes.pe" intenta sincronizar un lote de gastos para el viaje "viaje"
+    Entonces la respuesta tiene código 403
+    Y el mensaje de error es "No tiene permisos para realizar esta operación."

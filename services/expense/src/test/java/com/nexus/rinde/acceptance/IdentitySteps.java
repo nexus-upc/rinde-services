@@ -2,6 +2,7 @@ package com.nexus.rinde.acceptance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.nexus.rinde.support.FleetStub;
 import com.nexus.rinde.support.IamStub;
 import com.nexus.rinde.support.TestTokens;
 import io.cucumber.java.es.Dado;
@@ -15,11 +16,14 @@ public class IdentitySteps {
 
   private final ScenarioContext context;
   private final IamStub iam;
+  private final FleetStub fleet;
   private final TestTokens tokens;
 
-  public IdentitySteps(ScenarioContext context, IamStub iam, TestTokens tokens) {
+  public IdentitySteps(
+      ScenarioContext context, IamStub iam, FleetStub fleet, TestTokens tokens) {
     this.context = context;
     this.iam = iam;
+    this.fleet = fleet;
     this.tokens = tokens;
   }
 
@@ -41,7 +45,13 @@ public class IdentitySteps {
   @Dado("que el administrador invitó a {string} con el correo {string} y el rol {string}")
   public void theAdministratorInvited(String fullName, String email, String role) {
     UUID userId = UUID.randomUUID();
-    context.rememberUser(email, userId, context.currentTenantId(), role);
+    UUID tenantId = context.currentTenantId();
+    context.rememberUser(email, userId, tenantId, role);
+    if ("DRIVER".equals(role)) {
+      UUID driverId = UUID.randomUUID();
+      context.rememberDriverId(email, driverId);
+      fleet.setDriverForUser(tenantId, userId, driverId);
+    }
   }
 
   @Dado("que {string} definió la contraseña {string} con su enlace de invitación")

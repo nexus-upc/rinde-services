@@ -16,6 +16,7 @@ public record SyncRejectedItemResource(
             example = "TRIP_NOT_FOUND",
             allowableValues = {
               "TRIP_NOT_FOUND",
+              "TRIP_NOT_ASSIGNED",
               "TRIP_NOT_STARTED",
               "TRIP_SETTLED",
               "INVALID_EXPENSE",

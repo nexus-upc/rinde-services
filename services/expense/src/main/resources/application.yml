@@ -49,6 +49,8 @@ rinde:
     service-url: ${IAM_SERVICE_URL:http://localhost:8081}
   trip:
     service-url: ${TRIP_SERVICE_URL:http://localhost:8082}
+  fleet:
+    service-url: ${FLEET_SERVICE_URL:http://localhost:8083}
   evidence:
     # Tamaño máximo de cada comprobante en bytes (5 MB por defecto).
     max-size-bytes: ${RINDE_EVIDENCE_MAX_SIZE_BYTES:5242880}

@@ -21,9 +21,11 @@ class ExpenseRegisteredEventIntegrationTest extends AbstractIntegrationTest {
   void publishesExpenseRegisteredOnDirectCreation() throws Exception {
     UUID tenantId = UUID.randomUUID();
     UUID tripId = UUID.randomUUID();
-    UUID driverId = UUID.randomUUID();
-    String token = tokens.issue(driverId, tenantId, "DRIVER", "luis@andes.pe");
-    tripStub.setTripStatus(tenantId, tripId, "IN_ROUTE");
+    UUID driverUserId = UUID.randomUUID();
+    UUID fleetDriverId = UUID.randomUUID();
+    String token = tokens.issue(driverUserId, tenantId, "DRIVER", "luis@andes.pe");
+    fleetStub.setDriverForUser(tenantId, driverUserId, fleetDriverId);
+    tripStub.setTrip(tenantId, tripId, "IN_ROUTE", fleetDriverId);
 
     String body =
         """
@@ -51,7 +53,7 @@ class ExpenseRegisteredEventIntegrationTest extends AbstractIntegrationTest {
             evt -> {
               assertThat(evt.tenantId()).isEqualTo(tenantId);
               assertThat(evt.tripId()).isEqualTo(tripId);
-              assertThat(evt.driverId()).isEqualTo(driverId);
+              assertThat(evt.driverId()).isEqualTo(driverUserId);
               assertThat(evt.amount()).isEqualByComparingTo(new BigDecimal("180.50"));
               assertThat(evt.currency()).isEqualTo("PEN");
               assertThat(evt.expenseId()).isNotNull();
@@ -65,9 +67,11 @@ class ExpenseRegisteredEventIntegrationTest extends AbstractIntegrationTest {
   void publishesOnceOnSyncAndIgnoresIdempotentReplay() throws Exception {
     UUID tenantId = UUID.randomUUID();
     UUID tripId = UUID.randomUUID();
-    UUID driverId = UUID.randomUUID();
-    String token = tokens.issue(driverId, tenantId, "DRIVER", "luis@andes.pe");
-    tripStub.setTripStatus(tenantId, tripId, "IN_ROUTE");
+    UUID driverUserId = UUID.randomUUID();
+    UUID fleetDriverId = UUID.randomUUID();
+    String token = tokens.issue(driverUserId, tenantId, "DRIVER", "luis@andes.pe");
+    fleetStub.setDriverForUser(tenantId, driverUserId, fleetDriverId);
+    tripStub.setTrip(tenantId, tripId, "IN_ROUTE", fleetDriverId);
 
     String payload =
         """

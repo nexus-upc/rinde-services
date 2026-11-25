@@ -159,3 +159,18 @@ Característica: US21 Registrar un gasto con su evidencia desde el móvil
     Cuando el conductor registra un gasto de tipo "TOLL" por el monto "12.00" en fecha "HOY+5" sin evidencia y clave "KEY-EXP-FINALIZADO" en el viaje "viaje"
     Entonces la respuesta tiene código 201
     Y la respuesta incluye el campo "status" con el valor "PENDING_SUPPORT"
+
+  Escenario: Otro conductor de la misma empresa no puede registrar gastos en el viaje
+    Dado que el administrador invitó a "Marta Ruiz" con el correo "marta@andes.pe" y el rol "DRIVER"
+    Y que "marta@andes.pe" definió la contraseña "Clave-De-Marta-2026" con su enlace de invitación
+    Y que el conductor "marta@andes.pe" inició sesión
+    Cuando el conductor "marta@andes.pe" intenta registrar un gasto de tipo "FUEL" por el monto "45.00" con clave "KEY-EXP-OTRO-DRIVER" en el viaje "viaje"
+    Entonces la respuesta tiene código 403
+    Y el mensaje de error es "Solo el conductor asignado al viaje puede registrar gastos."
+
+  Escenario: Un responsable de operaciones no puede registrar gastos
+    Dado que el administrador invitó a "Óscar Pérez" con el correo "ops@andes.pe" y el rol "OPERATIONS_MANAGER"
+    Y que "ops@andes.pe" definió la contraseña "Clave-De-Ops-2026" con su enlace de invitación
+    Cuando el usuario "ops@andes.pe" intenta registrar un gasto de tipo "FUEL" por el monto "45.00" con clave "KEY-EXP-OPS" en el viaje "viaje"
+    Entonces la respuesta tiene código 403
+    Y el mensaje de error es "No tiene permisos para realizar esta operación."
