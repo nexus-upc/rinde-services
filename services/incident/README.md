@@ -11,7 +11,7 @@ mvnw.cmd spring-boot:run
 mvnw.cmd clean verify
 ```
 
-Puerto 8085. Swagger: http://localhost:8085/swagger-ui.html. Flyway crea el esquema `incident` con la tabla `incidents`.
+Puerto 8085. Swagger: http://localhost:8085/swagger-ui.html. Flyway crea el esquema `incident` con las tablas `incidents` (V1) e `incident_evidences` (V2).
 
 ## Endpoints públicos
 
@@ -22,6 +22,8 @@ Puerto 8085. Swagger: http://localhost:8085/swagger-ui.html. Flyway crea el esqu
 | GET | `/api/v1/incidents/{id}` | Cualquiera autenticado | Detalle. El conductor solo ve las que reportó; otra incidencia responde 404 (US30). |
 | PATCH | `/api/v1/incidents/{id}/status` | ADMINISTRATOR, OPERATIONS_MANAGER | Pasa una incidencia abierta a `IN_PROGRESS` (US31). |
 | POST | `/api/v1/incidents/{id}/close` | ADMINISTRATOR, OPERATIONS_MANAGER | Cierra la incidencia con la acción tomada, quién la atendió y la fecha (US31). |
+| POST | `/api/v1/incidents/{id}/evidences` | DRIVER | Adjunta o reemplaza la evidencia de la incidencia, pendiente (S4-14). |
+| GET | `/api/v1/incidents/{id}/evidences/{evidenceId}/content` | Cualquiera autenticado | Descarga la evidencia binaria de la incidencia, pendiente (S4-14). |
 
 Antes de registrar un reporte, el servicio consulta a Trip el viaje y a Fleet el conductor del usuario. El reporte solo se acepta si el viaje existe en la empresa, el usuario es el conductor asignado y el viaje está en `IN_ROUTE`.
 
@@ -32,7 +34,12 @@ Sin JWT y fuera del gateway. Base `/api/internal/v1/incidents/tenants/{tenantId}
 | Ruta | Lo consume |
 |---|---|
 | `/open-count` | Dashboard, cantidad de incidencias abiertas o en atención |
-| `/open` | Dashboard, listado de incidencias abiertas o en atención |
+| `/open` | Dashboard, listado de incidencias abiertas o en atención (incluye `description`) |
+| `?vehicleId={id}` | Fleet, todas las incidencias de un vehículo |
+
+## Almacenamiento de evidencias
+
+Usa el puerto `IncidentEvidenceStorage` con propiedades `rinde.evidence.storage.type` (`RINDE_EVIDENCE_STORAGE_TYPE`, valor por defecto `local` o `azure-blob`), `RINDE_EVIDENCE_STORAGE_PATH` (`./data/evidences`), `RINDE_EVIDENCE_BLOB_CONNECTION_STRING`, `RINDE_EVIDENCE_BLOB_CONTAINER` y `RINDE_EVIDENCE_MAX_SIZE_BYTES` (`5242880`).
 
 ## Eventos
 

@@ -4,7 +4,7 @@ Servicio de Fleet & Maintenance de RINDE by NEXUS: unidades, conductores, manten
 
 ## Ejecución
 
-Requiere Java 21, PostgreSQL y RabbitMQ. Crear las bases `rinde_fleet` y `rinde_fleet_test`, copiar `.env.example` como `.env` y completar los valores (`DB_*`, `JWT_SECRET`, `IAM_SERVICE_URL` y `RABBITMQ_*`).
+Requieren Java 21, PostgreSQL y RabbitMQ. Crear las bases `rinde_fleet` y `rinde_fleet_test`, copiar `.env.example` como `.env` y completar los valores (`DB_*`, `JWT_SECRET`, `IAM_SERVICE_URL`, `TRIP_SERVICE_URL`, `INCIDENT_SERVICE_URL` y `RABBITMQ_*`).
 
 ```
 mvnw.cmd spring-boot:run
@@ -21,6 +21,7 @@ Requieren token de empresa. Las altas exigen ADMINISTRATOR u OPERATIONS_MANAGER.
 |---|---|---|
 | GET, POST | `/api/v1/vehicles` | Listado y alta de unidades (US12). Respeta el límite del plan. |
 | GET | `/api/v1/vehicles/{id}` | Ficha de la unidad (US32). |
+| GET | `/api/v1/vehicles/{id}/history` | Historial consolidado de mantenimientos, viajes e incidencias, pendiente (S4-13). |
 | GET | `/api/v1/vehicles/{id}/health-status` | Estado de mantenimiento de la unidad (US15 y US34). |
 | POST | `/api/v1/vehicles/{id}/maintenances` | Registro de mantenimiento (US33). |
 | GET, POST | `/api/v1/drivers` | Listado y alta de conductores (US13). Si se indica `userId`, IAM debe confirmar que la cuenta es DRIVER de la empresa, que está `ACTIVE` y que no está vinculada a otro conductor (404, 400 o 409). |
@@ -39,7 +40,15 @@ Sin JWT y fuera del gateway. Base `/api/internal/v1/fleet/tenants/{tenantId}`.
 | `/drivers/{driverId}/eligibility` | Trip, al asignar |
 | `/users/{userId}/driver` | Trip, para saber qué conductor es el usuario |
 | `/vehicles/count` | Subscriptions, al elegir un plan |
-| `/vehicles` y `/drivers` | Dashboard |
+| `/vehicles` y `/drivers` | Dashboard y Notifications (incluye `userId` en conductores) |
+
+## Consumidores HTTP
+
+| Servicio | Ruta | Uso |
+|---|---|---|
+| IAM | `/api/internal/v1/tenants/{tenantId}/status` y `/users/{userId}` | Validación de empresa y cuentas |
+| Trip | `/api/internal/v1/trips/tenants/{tenantId}` | Viajes para historial de vehículos (`TRIP_SERVICE_URL`) |
+| Incident | `/api/internal/v1/incidents/tenants/{tenantId}?vehicleId={id}` | Incidencias para historial de vehículos (`INCIDENT_SERVICE_URL`) |
 
 ## Eventos
 
