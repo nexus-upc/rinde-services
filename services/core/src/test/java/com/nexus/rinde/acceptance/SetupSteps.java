@@ -245,6 +245,17 @@ public class SetupSteps {
     UUID tripId = tripId(tripName);
     UUID vehicleId = UUID.fromString(context.vehicleIdOf(vehicleName));
     UUID driverId = UUID.fromString(context.userIdOf(driverEmail));
+    UUID tenantId = doubles.tenantOfTrip(tripId);
+    if (doubles.findDriversByTenantId(tenantId).stream()
+        .noneMatch(driver -> driverId.equals(driver.userId()))) {
+      doubles.addDriver(
+          tenantId,
+          driverId,
+          driverId,
+          driverEmail,
+          "LIC-" + driverId.toString().substring(0, 6),
+          "A-IIb");
+    }
     doubles.assignTrip(tripId, vehicleId, driverId);
     TripSummary trip = doubles.trip(tripId).orElseThrow();
     var assignment =

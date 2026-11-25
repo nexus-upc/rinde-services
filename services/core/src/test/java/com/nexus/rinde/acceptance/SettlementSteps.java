@@ -89,6 +89,13 @@ public class SettlementSteps {
     context.record(api.listAdvances(token, tripId));
   }
 
+  @Cuando("el usuario {string} consulta los adelantos del viaje {string}")
+  public void userListsAdvances(String email, String tripName) throws Exception {
+    String tripId = context.tripIdOf(tripName);
+    String token = context.accessTokenOf(email);
+    context.record(api.listAdvances(token, tripId));
+  }
+
   @Cuando("el administrador consulta la liquidación {string}")
   public void adminQueriesSettlement(String settlementName) throws Exception {
     String settlementId = context.settlementIdOf(settlementName);
@@ -104,6 +111,13 @@ public class SettlementSteps {
 
   @Cuando("el conductor {string} consulta la liquidación {string}")
   public void driverQueriesSettlement(String email, String settlementName) throws Exception {
+    String settlementId = context.settlementIdOf(settlementName);
+    String token = context.accessTokenOf(email);
+    context.record(api.getById(token, settlementId));
+  }
+
+  @Cuando("el usuario {string} consulta la liquidación {string}")
+  public void userQueriesSettlement(String email, String settlementName) throws Exception {
     String settlementId = context.settlementIdOf(settlementName);
     String token = context.accessTokenOf(email);
     context.record(api.getById(token, settlementId));
@@ -130,6 +144,13 @@ public class SettlementSteps {
 
   @Cuando("el conductor {string} consulta la liquidación del viaje {string}")
   public void driverQueriesSettlementByTrip(String email, String tripName) throws Exception {
+    String tripId = context.tripIdOf(tripName);
+    String token = context.accessTokenOf(email);
+    context.record(api.getByTrip(token, tripId));
+  }
+
+  @Cuando("el usuario {string} consulta la liquidación del viaje {string}")
+  public void userQueriesSettlementByTrip(String email, String tripName) throws Exception {
     String tripId = context.tripIdOf(tripName);
     String token = context.accessTokenOf(email);
     context.record(api.getByTrip(token, tripId));
@@ -211,6 +232,20 @@ public class SettlementSteps {
   public void adminExportsUnknown() throws Exception {
     String token = context.currentAdministratorToken();
     context.record(api.export(token, UUID.randomUUID().toString()));
+  }
+
+  @Cuando("el conductor {string} intenta exportar la liquidación {string}")
+  public void driverExportsSettlement(String email, String settlementName) throws Exception {
+    String settlementId = context.settlementIdOf(settlementName);
+    String token = context.accessTokenOf(email);
+    context.record(api.export(token, settlementId));
+  }
+
+  @Cuando("el usuario {string} exporta la liquidación {string}")
+  public void userExportsSettlement(String email, String settlementName) throws Exception {
+    String settlementId = context.settlementIdOf(settlementName);
+    String token = context.accessTokenOf(email);
+    context.record(api.export(token, settlementId));
   }
 
   @Cuando("una persona sin token exporta la liquidación {string}")

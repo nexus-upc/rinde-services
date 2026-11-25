@@ -82,7 +82,8 @@ public class SettlementsController {
   public ResponseEntity<SettlementResource> getSettlementById(@PathVariable UUID id) {
     Settlement settlement =
         settlementQueryService.handle(
-            new GetSettlementByIdQuery(TenantContext.tenantId(), id));
+            new GetSettlementByIdQuery(
+                TenantContext.tenantId(), id, TenantContext.userId(), TenantContext.role()));
     return ResponseEntity.ok(SettlementResourceFromEntityAssembler.toResource(settlement));
   }
 
@@ -104,7 +105,8 @@ public class SettlementsController {
   public ResponseEntity<SettlementResource> getSettlementByTrip(@PathVariable UUID tripId) {
     Settlement settlement =
         settlementQueryService.handle(
-            new GetSettlementByTripIdQuery(TenantContext.tenantId(), tripId));
+            new GetSettlementByTripIdQuery(
+                TenantContext.tenantId(), tripId, TenantContext.userId(), TenantContext.role()));
     return ResponseEntity.ok(SettlementResourceFromEntityAssembler.toResource(settlement));
   }
 
@@ -177,7 +179,7 @@ public class SettlementsController {
   }
 
   @GetMapping(value = "/api/v1/settlements/{id}/export", produces = "text/csv")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')")
   @Operation(
       summary = "Exportar la liquidación como CSV (US27)",
       description = "Descarga el detalle de la liquidación y sus gastos aprobados en formato CSV.")

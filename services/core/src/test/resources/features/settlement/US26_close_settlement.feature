@@ -56,3 +56,10 @@ Característica: US26 Cerrar la liquidación de un viaje
   Escenario: Cerrar liquidación requiere autenticación
     Cuando una persona sin token intenta cerrar la liquidación "liq"
     Entonces la respuesta tiene código 401
+
+  Escenario: Un administrador de otra empresa no puede cerrar la liquidación
+    Dado que existe una empresa verificada con RUC "20987654321" y administrador "otro@otra.pe"
+    Y que el administrador "otro@otra.pe" inició sesión
+    Cuando el administrador cierra la liquidación "liq"
+    Entonces la respuesta tiene código 404
+    Y el mensaje de error es "La liquidación no existe."

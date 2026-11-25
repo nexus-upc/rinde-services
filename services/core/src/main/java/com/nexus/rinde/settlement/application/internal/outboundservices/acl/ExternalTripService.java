@@ -20,4 +20,9 @@ public class ExternalTripService {
   public Optional<String> findStatusByTripId(UUID tenantId, UUID tripId) {
     return tripContextFacade.findByIdAndTenantId(tripId, tenantId).map(TripSummary::status);
   }
+
+  /** Conductor asignado al viaje, o vacío si no existe el viaje o no tiene conductor asignado. */
+  public Optional<UUID> findDriverIdByTripId(UUID tenantId, UUID tripId) {
+    return tripContextFacade.findByIdAndTenantId(tripId, tenantId).map(TripSummary::driverId);
+  }
 }
