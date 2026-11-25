@@ -67,6 +67,22 @@ class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
         .andExpect(status().isNotImplemented())
         .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-25."));
     mockMvc
+        .perform(
+            get("/api/v1/notifications")
+                .param("type", "INCIDENT_REPORTED,EXPENSE_PENDING_REVIEW")
+                .param("unreadOnly", "true")
+                .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isNotImplemented())
+        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-25."));
+    mockMvc
+        .perform(
+            get("/api/v1/notifications")
+                .param("type", "INVALID_TYPE")
+                .header("Authorization", "Bearer " + adminToken))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.detail").value("El parámetro type contiene un tipo de aviso inválido."));
+    mockMvc
         .perform(get("/api/v1/notifications").header("Authorization", "Bearer " + driverToken))
         .andExpect(status().isForbidden());
 

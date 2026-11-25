@@ -5,19 +5,23 @@ import com.nexus.rinde.notification.domain.model.commands.MarkNotificationReadCo
 import com.nexus.rinde.notification.domain.model.queries.GetUnreadNotificationCountQuery;
 import com.nexus.rinde.notification.domain.model.queries.ListCompanyNotificationsQuery;
 import com.nexus.rinde.notification.domain.model.valueobjects.NotificationPage;
+import com.nexus.rinde.notification.domain.model.valueobjects.NotificationType;
 import com.nexus.rinde.notification.domain.services.CompanyNotificationCommandService;
 import com.nexus.rinde.notification.domain.services.CompanyNotificationQueryService;
 import com.nexus.rinde.notification.interfaces.rest.resources.NotificationPageResource;
 import com.nexus.rinde.notification.interfaces.rest.resources.NotificationResource;
 import com.nexus.rinde.notification.interfaces.rest.resources.UnreadNotificationCountResource;
+import com.nexus.rinde.notification.interfaces.rest.transform.NotificationTypeFilterFromParameterAssembler;
 import com.nexus.rinde.shared.infrastructure.security.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -67,25 +71,37 @@ public class NotificationsController {
   @PreAuthorize("hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')")
   @Operation(
       summary = "Listar notificaciones de la empresa",
-      description = "Devuelve notificaciones paginadas con estado de lectura para el usuario.")
+      description =
+          "Devuelve notificaciones paginadas con estado de lectura por usuario y filtro opcional"
+              + " por tipo y estado no leído.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Listado paginado de notificaciones"),
     @ApiResponse(
         responseCode = "400",
-        description = "Parámetros de paginación inválidos",
+        description = "Parámetros de paginación o filtro type inválidos",
         content =
             @Content(
                 mediaType = "application/problem+json",
                 schema = @Schema(implementation = ProblemDetail.class)))
   })
   public ResponseEntity<NotificationPageResource> list(
-      @RequestParam(name = "unreadOnly", defaultValue = "false") boolean unreadOnly,
+      @Parameter(description = "Si es true, lista solo las no leídas por el usuario.")
+          @RequestParam(name = "unreadOnly", defaultValue = "false")
+          boolean unreadOnly,
+      @Parameter(
+              description =
+                  "Uno o varios tipos separados por coma: EXPENSE_PENDING_REVIEW,"
+                      + " MAINTENANCE_DUE, INCIDENT_REPORTED, SETTLEMENT_READY.",
+              example = "EXPENSE_PENDING_REVIEW,INCIDENT_REPORTED")
+          @RequestParam(name = "type", required = false)
+          String type,
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
+    Set<NotificationType> types = NotificationTypeFilterFromParameterAssembler.toTypes(type);
     NotificationPage result =
         queryService.handle(
             new ListCompanyNotificationsQuery(
-                TenantContext.tenantId(), TenantContext.userId(), unreadOnly, page, size));
+                TenantContext.tenantId(), TenantContext.userId(), unreadOnly, types, page, size));
     List<NotificationResource> items =
         result.items().stream()
             .map(

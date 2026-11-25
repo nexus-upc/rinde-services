@@ -579,7 +579,9 @@ Errores de lectura (`GET /api/v1/incidents/{id}/evidences/{evidenceId}/content`)
 
 1. **Listar notificaciones:**
    - `GET /api/v1/notifications?unreadOnly=false&page=0&size=20`
-   - Parámetros opcionales: `unreadOnly` (boolean, por defecto `false`), `page` (int, por defecto `0`), `size` (int, por defecto `20`, máximo `100`).
+   - Parámetros opcionales: `unreadOnly` (boolean, por defecto `false`), `type` (uno o varios valores separados por coma entre `EXPENSE_PENDING_REVIEW`, `MAINTENANCE_DUE`, `INCIDENT_REPORTED` y `SETTLEMENT_READY`; sin `type` lista todos), `page` (int, por defecto `0`), `size` (int, por defecto `20`, máximo `100`).
+   - Combinación de filtros: `type` se combina con `unreadOnly` (por ejemplo, `?type=INCIDENT_REPORTED&unreadOnly=true` lista solo incidencias no leídas). `GET /api/v1/notifications/unread-count` no cambia: cuenta todos los tipos para la campana.
+   - Etiquetas en web por tipo: `EXPENSE_PENDING_REVIEW` `"Gastos por revisar"`, `MAINTENANCE_DUE` `"Mantenimiento"`, `INCIDENT_REPORTED` `"Incidencias"`, `SETTLEMENT_READY` `"Viajes por liquidar"`.
    - Orden: `createdAt` descendente.
    - Modelo de propiedad: la notificación pertenece a la empresa (`tenantId`) y el estado de lectura (`readAt`) se guarda por usuario (`userId`), de modo que marcar como leída afecta solo al usuario autenticado.
    - Respuesta `200 OK` (paginada según sección 2.1):
@@ -628,6 +630,7 @@ Errores de lectura (`GET /api/v1/incidents/{id}/evidences/{evidenceId}/content`)
 |---|---|---|
 | 400 | El número de página no puede ser negativo. | `page < 0` en el listado |
 | 400 | El tamaño de página debe estar entre 1 y 100. | `size < 1` o `size > 100` en el listado |
+| 400 | El parámetro type contiene un tipo de aviso inválido. | Algún valor en `type` no pertenece a `EXPENSE_PENDING_REVIEW`, `MAINTENANCE_DUE`, `INCIDENT_REPORTED` o `SETTLEMENT_READY` |
 | 404 | La notificación no existe. | El `id` no existe en la empresa al marcar como leída |
 
 #### Tipos de notificación, eventos de RabbitMQ y enlaces
@@ -984,3 +987,4 @@ Los tres correos corresponden a los eventos publicados por `Tenant` y `User`, co
 11. **Mensajes `400` de parámetros inválidos (Convenciones 2.1, 2.3, C2, C3, C6, C9):** se usa `BusinessRuleException` con mensajes explícitos para fechas (`"La fecha de inicio debe tener el formato AAAA-MM-DD."`, `"La fecha de fin debe tener el formato AAAA-MM-DD."`), estado en `C2` (`"El parámetro status contiene un estado de gasto inválido."`) y paginación (`"El número de página no puede ser negativo."`, `"El tamaño de página debe estar entre 1 y 100."`).
 12. **Convivencia de `C1` con la separación de Settlement (`S4-02`):** `S4-B` prepara solo la fachada local actual; al separar Settlement en `S4-02`, Gabriel convierte `SettlementContextFacade` en cliente HTTP y agrega `SETTLEMENT` a `unavailableSources` si no responde.
 13. **Proveedor de correo (`C8`):** `demo` conserva el comportamiento actual (buzón si `rinde.demo.mailbox.enabled=true` o log si está en `false`); `azure` no instancia buzón ni log de enlaces; en perfiles `prod` o `production` se exige `rinde.mail.provider=azure` o el arranque falla con `"En producción el correo debe usar el proveedor azure."`.
+14. **Filtro por tipo de aviso en el centro de notificaciones (`C6`):** `GET /api/v1/notifications` admite el parámetro opcional `type` (uno o varios valores CSV entre `EXPENSE_PENDING_REVIEW`, `MAINTENANCE_DUE`, `INCIDENT_REPORTED` y `SETTLEMENT_READY`), combinable con `unreadOnly` y con rechazo `400` `"El parámetro type contiene un tipo de aviso inválido."`; `/unread-count` no cambia.
