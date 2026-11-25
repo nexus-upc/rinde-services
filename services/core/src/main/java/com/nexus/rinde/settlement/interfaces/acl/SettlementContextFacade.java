@@ -8,6 +8,9 @@ public interface SettlementContextFacade {
 
   Optional<SettlementSummary> findByTripIdAndTenantId(UUID tripId, UUID tenantId);
 
+  /** Medio de entrega del adelanto registrado más recientemente para el viaje, si existe. */
+  Optional<String> findLatestAdvanceDeliveryMethod(UUID tripId, UUID tenantId);
+
   /** Cantidad de liquidaciones de la empresa que todavía no se cierran. */
   long countOpenByTenantId(UUID tenantId);
 }

@@ -66,8 +66,20 @@ public class ContextDoubles implements IamContextFacade, TripContextFacade, Flee
 
   public void addDriver(
       UUID tenantId, UUID driverId, String fullName, String license, String category) {
+    addDriver(tenantId, driverId, null, fullName, license, category);
+  }
+
+  public void addDriver(
+      UUID tenantId,
+      UUID driverId,
+      UUID userId,
+      String fullName,
+      String license,
+      String category) {
     tenantMap(drivers, tenantId)
-        .put(driverId, new FleetDriverSummary(driverId, fullName, license, category, "ENABLED"));
+        .put(
+            driverId,
+            new FleetDriverSummary(driverId, userId, fullName, license, category, "ENABLED"));
   }
 
   public void scheduleTrip(

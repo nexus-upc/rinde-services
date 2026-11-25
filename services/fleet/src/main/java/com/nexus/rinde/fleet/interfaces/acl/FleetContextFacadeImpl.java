@@ -98,6 +98,7 @@ public class FleetContextFacadeImpl implements FleetContextFacade {
   private static FleetDriverSummary toDriverSummary(Driver driver) {
     return new FleetDriverSummary(
         driver.getId(),
+        driver.getUserId(),
         driver.getFullName(),
         driver.getLicenseNumber(),
         driver.getLicenseCategory(),

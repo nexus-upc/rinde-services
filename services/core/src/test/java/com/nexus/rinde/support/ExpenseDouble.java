@@ -30,7 +30,8 @@ public class ExpenseDouble implements ExpenseContextFacade {
       BigDecimal amount,
       LocalDate date,
       String status) {
-    ExpenseSummary summary = new ExpenseSummary(expenseId, category, amount, "PEN", date, status);
+    ExpenseSummary summary =
+        new ExpenseSummary(expenseId, tripId, category, amount, "PEN", date, status);
     expenses
         .computeIfAbsent(tenantId, id -> new ConcurrentHashMap<>())
         .put(expenseId, new Expense(tripId, summary));
@@ -53,6 +54,7 @@ public class ExpenseDouble implements ExpenseContextFacade {
                             expense.tripId(),
                             new ExpenseSummary(
                                 expense.summary().id(),
+                                expense.tripId(),
                                 expense.summary().category(),
                                 expense.summary().amount(),
                                 expense.summary().currency(),

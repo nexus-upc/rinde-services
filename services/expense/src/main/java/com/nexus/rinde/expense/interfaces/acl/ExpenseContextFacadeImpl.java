@@ -43,6 +43,7 @@ public class ExpenseContextFacadeImpl implements ExpenseContextFacade {
   private static ExpenseSummary toSummary(Expense expense) {
     return new ExpenseSummary(
         expense.getId(),
+        expense.getTripId(),
         expense.getCategory().name(),
         expense.getAmount().getAmount(),
         expense.getAmount().getCurrency(),

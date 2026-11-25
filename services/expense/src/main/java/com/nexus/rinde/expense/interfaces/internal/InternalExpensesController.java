@@ -64,6 +64,7 @@ public class InternalExpensesController {
   private static InternalExpenseResource toResource(Expense expense) {
     return new InternalExpenseResource(
         expense.getId(),
+        expense.getTripId(),
         expense.getCategory().name(),
         expense.getAmount().getAmount(),
         expense.getAmount().getCurrency(),
@@ -73,6 +74,7 @@ public class InternalExpensesController {
 
   public record InternalExpenseResource(
       UUID id,
+      UUID tripId,
       String category,
       BigDecimal amount,
       String currency,

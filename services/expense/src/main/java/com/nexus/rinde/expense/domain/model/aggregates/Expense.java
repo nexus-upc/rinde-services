@@ -2,6 +2,7 @@ package com.nexus.rinde.expense.domain.model.aggregates;
 
 import com.nexus.rinde.expense.domain.model.entities.Evidence;
 import com.nexus.rinde.expense.domain.model.events.ExpenseObserved;
+import com.nexus.rinde.expense.domain.model.events.ExpenseRegistered;
 import com.nexus.rinde.expense.domain.model.valueobjects.EvidenceFile;
 import com.nexus.rinde.expense.domain.model.valueobjects.ExpenseCategory;
 import com.nexus.rinde.expense.domain.model.valueobjects.ExpenseStatus;
@@ -103,6 +104,16 @@ public class Expense extends AuditableAbstractAggregateRoot {
     expense.idempotencyKey = idempotencyKey.trim();
     expense.isLocked = false;
     expense.status = ExpenseStatus.PENDING_SUPPORT;
+    expense.registerEvent(
+        new ExpenseRegistered(
+            UUID.randomUUID(),
+            tenantId,
+            expense.getId(),
+            tripId,
+            driverId,
+            amount.getAmount(),
+            amount.getCurrency(),
+            Instant.now()));
     return expense;
   }
 
