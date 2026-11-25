@@ -1,6 +1,5 @@
 package com.nexus.rinde.dashboard.interfaces.rest;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -30,35 +29,6 @@ class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
         .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-23."));
     mockMvc
         .perform(get("/api/v1/dashboard/charts").header("Authorization", "Bearer " + driverToken))
-        .andExpect(status().isForbidden());
-
-    // C5: Driver push devices
-    mockMvc
-        .perform(
-            post("/api/v1/notifications/devices")
-                .header("Authorization", "Bearer " + driverToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"token\":\"fcm-token-01\",\"platform\":\"ANDROID\"}"))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-24."));
-    mockMvc
-        .perform(
-            post("/api/v1/notifications/devices")
-                .header("Authorization", "Bearer " + adminToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"token\":\"fcm-token-01\",\"platform\":\"ANDROID\"}"))
-        .andExpect(status().isForbidden());
-
-    mockMvc
-        .perform(
-            delete("/api/v1/notifications/devices/{token}", "fcm-token-01")
-                .header("Authorization", "Bearer " + driverToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-24."));
-    mockMvc
-        .perform(
-            delete("/api/v1/notifications/devices/{token}", "fcm-token-01")
-                .header("Authorization", "Bearer " + adminToken))
         .andExpect(status().isForbidden());
 
     // C6: Company notification center

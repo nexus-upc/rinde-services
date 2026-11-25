@@ -20,6 +20,7 @@ public class RetryStoreEntry {
   public static final String PENDING = "PENDING";
   public static final String DELIVERED = "DELIVERED";
   public static final String FAILED = "FAILED";
+  public static final String SKIPPED = "SKIPPED";
 
   @Id
   @Column(name = "event_id", nullable = false, updatable = false)
@@ -80,7 +81,7 @@ public class RetryStoreEntry {
     this.message = notice.message();
     this.deliveryStatus = PENDING;
     this.retryCount = 0;
-    this.lastError = "No hay token de dispositivo ni proveedor push configurado.";
+    this.lastError = null;
     this.createdAt = now;
     this.updatedAt = now;
   }
@@ -94,6 +95,14 @@ public class RetryStoreEntry {
     this.nextAttemptAt = null;
     this.lastError = null;
     this.deliveredAt = now;
+    this.updatedAt = now;
+  }
+
+  /** Marca el aviso como omitido cuando no hay usuario o dispositivos sin programar reintentos. */
+  public void markSkipped(String reason, Instant now) {
+    this.deliveryStatus = SKIPPED;
+    this.nextAttemptAt = null;
+    this.lastError = shorten(reason);
     this.updatedAt = now;
   }
 

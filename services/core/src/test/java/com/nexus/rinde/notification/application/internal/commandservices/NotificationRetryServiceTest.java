@@ -6,13 +6,18 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.nexus.rinde.fleet.interfaces.acl.FleetContextFacade;
+import com.nexus.rinde.fleet.interfaces.acl.FleetDriverSummary;
+import com.nexus.rinde.notification.application.internal.outboundservices.acl.NotificationFleetService;
 import com.nexus.rinde.notification.domain.model.valueobjects.EmailMessage;
 import com.nexus.rinde.notification.domain.model.valueobjects.RetryPolicy;
 import com.nexus.rinde.notification.domain.model.valueobjects.TripAssignmentNotice;
 import com.nexus.rinde.notification.domain.services.EmailAdapter;
 import com.nexus.rinde.notification.domain.services.PushAdapter;
+import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.DriverDeviceEntity;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.EmailOutboxEntry;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.RetryStoreEntry;
+import com.nexus.rinde.notification.infrastructure.persistence.jpa.repositories.DriverDeviceRepository;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.repositories.EmailOutboxRepository;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.repositories.RetryStoreRepository;
 import com.nexus.rinde.notification.infrastructure.services.PushAdapterUnavailableException;
@@ -52,6 +57,8 @@ class NotificationRetryServiceTest {
   private final List<EmailOutboxEntry> emailStore = new ArrayList<>();
   private final RetryStoreRepository retryStoreRepository = mock(RetryStoreRepository.class);
   private final EmailOutboxRepository emailOutboxRepository = mock(EmailOutboxRepository.class);
+  private final FleetContextFacade fleetContextFacade = mock(FleetContextFacade.class);
+  private final DriverDeviceRepository driverDeviceRepository = mock(DriverDeviceRepository.class);
   private final FakePushAdapter pushAdapter = new FakePushAdapter();
   private final FakeEmailAdapter emailAdapter = new FakeEmailAdapter();
   private final MutableClock clock = new MutableClock(T0);
@@ -59,6 +66,7 @@ class NotificationRetryServiceTest {
 
   @BeforeEach
   void setUp() {
+    when(fleetContextFacade.findDriversByTenantId(tenantId)).thenReturn(List.of());
     when(retryStoreRepository.findAllByDeliveryStatusAndNextAttemptAtLessThanEqual(
             anyString(), any(Instant.class)))
         .thenAnswer(
@@ -93,11 +101,17 @@ class NotificationRetryServiceTest {
                     .findFirst());
 
     PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    TripAssignmentPushDispatcher pushDispatcher =
+        new TripAssignmentPushDispatcher(
+            new NotificationFleetService(fleetContextFacade),
+            driverDeviceRepository,
+            pushAdapter,
+            POLICY);
     service =
         new NotificationRetryService(
             retryStoreRepository,
             emailOutboxRepository,
-            pushAdapter,
+            pushDispatcher,
             emailAdapter,
             POLICY,
             clock,
@@ -178,6 +192,27 @@ class NotificationRetryServiceTest {
   }
 
   @Test
+  void skipsPendingRetryWhenDriverRemovedAllRegisteredDevices() {
+    RetryStoreEntry entry = pushNoticeFailedAtFirstAttempt();
+    UUID driverId = entry.getRecipientDriverId();
+    UUID userId =
+        fleetContextFacade.findDriversByTenantId(tenantId).stream()
+            .filter(driver -> driverId.equals(driver.id()))
+            .findFirst()
+            .orElseThrow()
+            .userId();
+    when(driverDeviceRepository.findAllByTenantIdAndUserIdOrderByUpdatedAtDesc(tenantId, userId))
+        .thenReturn(List.of());
+
+    clock.setInstant(T0.plus(Duration.ofMinutes(1)));
+    service.retryDueNotices();
+
+    assertThat(entry.getDeliveryStatus()).isEqualTo(RetryStoreEntry.SKIPPED);
+    assertThat(entry.getNextAttemptAt()).isNull();
+    assertThat(pushAdapter.attemptsFor(entry.getEventId())).isZero();
+  }
+
+  @Test
   void retriesEmailUntilDelivered() {
     EmailOutboxEntry entry = emailNoticeFailedAtFirstAttempt();
     emailAdapter.failing.add(entry.getEventId());
@@ -220,12 +255,23 @@ class NotificationRetryServiceTest {
 
   /** Aviso cuya primera entrega falló en T0; su primer reintento vence a T0+1 minuto. */
   private RetryStoreEntry pushNoticeFailedAtFirstAttempt() {
+    UUID driverId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    List<FleetDriverSummary> currentDrivers =
+        new ArrayList<>(fleetContextFacade.findDriversByTenantId(tenantId));
+    currentDrivers.add(
+        new FleetDriverSummary(driverId, userId, "Conductor", "LIC-001", "A-IIb", "ENABLED"));
+    when(fleetContextFacade.findDriversByTenantId(tenantId)).thenReturn(currentDrivers);
+    when(driverDeviceRepository.findAllByTenantIdAndUserIdOrderByUpdatedAtDesc(tenantId, userId))
+        .thenReturn(
+            List.of(DriverDeviceEntity.register(tenantId, userId, "token-" + driverId, "ANDROID", T0)));
+
     TripAssignmentNotice notice =
         TripAssignmentNotice.from(
             UUID.randomUUID(),
             tenantId,
             UUID.randomUUID(),
-            UUID.randomUUID(),
+            driverId,
             "VIA-" + pushStore.size(),
             "Arequipa",
             LocalDate.of(2026, 10, 20),
