@@ -53,6 +53,10 @@ Levanta el gateway, IAM, Trip, Fleet, Expense, core, RabbitMQ y una instancia de
 
 `pwsh -File tests/deployment/verify.ps1 -Build` levanta un entorno temporal, comprueba el flujo entre procesos y lo elimina. Requiere PowerShell 7.2 o superior.
 
+## Datos de demostración
+
+`pwsh -File scripts/seed-demo.ps1` carga una empresa de demostración idempotente vía HTTP contra el gateway (local o Azure) con flota, conductores, viajes en los cinco estados, adelantos, gastos con comprobante PNG, incidencias y liquidaciones. Ver [scripts/README.md](scripts/README.md) y `.env.demo-company.example`.
+
 ## Reglas
 
 - Ramas `feature/<tarea>` desde `develop`, integradas con `merge --no-ff`. Conventional Commits en inglés, solo título.
