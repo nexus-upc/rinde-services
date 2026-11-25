@@ -90,6 +90,11 @@ rinde:
       delays-minutes: [1, 2, 4, 8, 16]
       # Cada cuánto se revisan los avisos vencidos, en milisegundos.
       poll-delay-ms: 30000
+  push:
+    # Proveedor activo: unavailable o fcm.
+    provider: ${RINDE_PUSH_PROVIDER:unavailable}
+    fcm:
+      credentials-json: ${RINDE_FCM_CREDENTIALS_JSON:}
 
 springdoc:
   api-docs:

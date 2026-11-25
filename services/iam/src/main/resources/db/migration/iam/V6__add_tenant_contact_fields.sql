@@ -1,0 +1,2 @@
+ALTER TABLE iam.tenants ADD COLUMN phone VARCHAR(30);
+ALTER TABLE iam.tenants ADD COLUMN address VARCHAR(200);

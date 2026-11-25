@@ -1,6 +1,8 @@
 package com.nexus.rinde.incident.application.internal.queryservices;
 
 import com.nexus.rinde.incident.domain.model.aggregates.Incident;
+import com.nexus.rinde.incident.domain.model.queries.GetIncidentEvidenceContentQuery;
+import com.nexus.rinde.incident.domain.model.valueobjects.IncidentEvidenceContent;
 import com.nexus.rinde.incident.domain.model.valueobjects.IncidentStatus;
 import com.nexus.rinde.incident.domain.services.IncidentQueryService;
 import com.nexus.rinde.incident.infrastructure.persistence.jpa.repositories.IncidentRepository;
@@ -9,8 +11,10 @@ import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Consultas de incidencias. Un conductor no ve incidencias que reportó otro conductor. */
 @Service
@@ -50,5 +54,11 @@ public class IncidentQueryServiceImpl implements IncidentQueryService {
   public List<Incident> findOpen(UUID tenantId) {
     return incidentRepository.findByTenantIdAndStatusNotOrderByReportedAtDesc(
         tenantId, IncidentStatus.CLOSED);
+  }
+
+  @Override
+  public IncidentEvidenceContent findEvidenceContent(GetIncidentEvidenceContentQuery query) {
+    throw new ResponseStatusException(
+        HttpStatus.NOT_IMPLEMENTED, "Funcionalidad pendiente de implementar en S4-14.");
   }
 }

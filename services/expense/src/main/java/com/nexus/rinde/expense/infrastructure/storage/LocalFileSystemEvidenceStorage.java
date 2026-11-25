@@ -10,10 +10,15 @@ import java.nio.file.StandardOpenOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** Adaptador de comprobantes en una carpeta local. En Docker la carpeta es un volumen. */
 @Component
+@ConditionalOnProperty(
+    name = "rinde.evidence.storage.type",
+    havingValue = "local",
+    matchIfMissing = true)
 public class LocalFileSystemEvidenceStorage implements EvidenceStorage {
 
   private static final Logger log = LoggerFactory.getLogger(LocalFileSystemEvidenceStorage.class);

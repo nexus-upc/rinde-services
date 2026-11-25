@@ -6,6 +6,7 @@ import com.nexus.rinde.iam.domain.model.aggregates.User;
 import com.nexus.rinde.iam.domain.model.commands.ReactivateTenantCommand;
 import com.nexus.rinde.iam.domain.model.commands.RegisterTenantCommand;
 import com.nexus.rinde.iam.domain.model.commands.RestrictTenantCommand;
+import com.nexus.rinde.iam.domain.model.commands.UpdateCurrentTenantProfileCommand;
 import com.nexus.rinde.iam.domain.model.commands.VerifyTenantCommand;
 import com.nexus.rinde.iam.domain.model.valueobjects.AccessToken;
 import com.nexus.rinde.iam.domain.model.valueobjects.Email;
@@ -26,9 +27,11 @@ import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Registra empresas, confirma su correo y aplica las restricciones que llegan desde la suscripción.
@@ -55,6 +58,12 @@ public class TenantCommandServiceImpl implements TenantCommandService {
     this.passwordEncoder = passwordEncoder;
     this.tokenValidity = tokenValidity;
     this.clock = clock;
+  }
+
+  @Override
+  public Tenant handle(UpdateCurrentTenantProfileCommand command) {
+    throw new ResponseStatusException(
+        HttpStatus.NOT_IMPLEMENTED, "Funcionalidad pendiente de implementar en S4-28.");
   }
 
   /**

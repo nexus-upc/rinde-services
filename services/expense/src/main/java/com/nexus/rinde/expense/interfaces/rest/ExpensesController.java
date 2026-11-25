@@ -7,11 +7,14 @@ import com.nexus.rinde.expense.domain.model.commands.UpdateExpenseStatusCommand;
 import com.nexus.rinde.expense.domain.model.queries.GetEvidenceContentQuery;
 import com.nexus.rinde.expense.domain.model.queries.GetExpenseByIdQuery;
 import com.nexus.rinde.expense.domain.model.queries.GetExpensesByTripQuery;
+import com.nexus.rinde.expense.domain.model.queries.ListExpensesQuery;
 import com.nexus.rinde.expense.domain.model.valueobjects.EvidenceContent;
+import com.nexus.rinde.expense.domain.model.valueobjects.PagedExpenses;
 import com.nexus.rinde.expense.domain.model.valueobjects.SyncExpensesResult;
 import com.nexus.rinde.expense.domain.services.ExpenseCommandService;
 import com.nexus.rinde.expense.domain.services.ExpenseQueryService;
 import com.nexus.rinde.expense.domain.model.valueobjects.Money;
+import com.nexus.rinde.expense.interfaces.rest.resources.ExpensePageResource;
 import com.nexus.rinde.expense.interfaces.rest.resources.ExpenseResource;
 import com.nexus.rinde.expense.interfaces.rest.resources.RegisterExpenseResource;
 import com.nexus.rinde.expense.interfaces.rest.resources.SyncExpenseItemResource;
@@ -48,6 +51,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -381,5 +385,40 @@ public class ExpensesController {
     return ResponseEntity.ok(
         new SyncExpensesResponseResource(
             items.size(), resources.size(), resources, rejected.size(), rejected));
+  }
+
+  @GetMapping("/api/v1/expenses")
+  @PreAuthorize("hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')")
+  @Operation(
+      summary = "Bandeja global de gastos de la empresa",
+      description =
+          "Lista gastos filtrados por estado, viaje, conductor y periodo con paginación.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Página de gastos"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Filtros o parámetros de paginación inválidos",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public ResponseEntity<ExpensePageResource> listExpenses(
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) UUID tripId,
+      @RequestParam(required = false) UUID driverId,
+      @RequestParam(required = false) String from,
+      @RequestParam(required = false) String to,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    PagedExpenses result =
+        expenseQueryService.handle(
+            new ListExpensesQuery(
+                TenantContext.tenantId(), status, tripId, driverId, from, to, page, size));
+    List<ExpenseResource> resources =
+        result.items().stream().map(ExpenseResourceFromEntityAssembler::toResource).toList();
+    return ResponseEntity.ok(
+        new ExpensePageResource(
+            resources, result.page(), result.size(), result.totalItems(), result.totalPages()));
   }
 }

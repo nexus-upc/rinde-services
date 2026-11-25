@@ -1,6 +1,7 @@
 package com.nexus.rinde.incident.domain.services;
 
 import com.nexus.rinde.incident.domain.model.aggregates.Incident;
+import com.nexus.rinde.incident.domain.model.commands.AttachIncidentEvidenceCommand;
 import com.nexus.rinde.incident.domain.model.commands.CloseIncidentCommand;
 import com.nexus.rinde.incident.domain.model.commands.ReportIncidentCommand;
 import com.nexus.rinde.incident.domain.model.commands.StartIncidentAttentionCommand;
@@ -15,4 +16,6 @@ public interface IncidentCommandService {
   Incident startAttention(StartIncidentAttentionCommand command);
 
   Incident close(CloseIncidentCommand command);
+
+  Incident attachEvidence(AttachIncidentEvidenceCommand command);
 }

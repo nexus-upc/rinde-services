@@ -26,6 +26,7 @@ public final class IncidentResourceFromEntityAssembler {
         incident.getType(),
         incident.getDescription(),
         incident.getEvidenceUrl(),
+        null,
         incident.getStatus(),
         incident.getReportedAt(),
         resolutionResource,

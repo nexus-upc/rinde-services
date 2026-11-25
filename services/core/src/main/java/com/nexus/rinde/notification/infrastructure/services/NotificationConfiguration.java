@@ -4,6 +4,7 @@ import com.nexus.rinde.notification.domain.model.valueobjects.RetryPolicy;
 import com.nexus.rinde.notification.domain.services.PushAdapter;
 import java.time.Duration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,6 +13,10 @@ import org.springframework.context.annotation.Configuration;
 public class NotificationConfiguration {
 
   @Bean
+  @ConditionalOnProperty(
+      name = "rinde.push.provider",
+      havingValue = "unavailable",
+      matchIfMissing = true)
   @ConditionalOnMissingBean(PushAdapter.class)
   public PushAdapter unavailablePushAdapter() {
     return new UnavailablePushAdapter();

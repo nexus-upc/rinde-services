@@ -1,6 +1,7 @@
 package com.nexus.rinde.incident.application.internal.commandservices;
 
 import com.nexus.rinde.incident.domain.model.aggregates.Incident;
+import com.nexus.rinde.incident.domain.model.commands.AttachIncidentEvidenceCommand;
 import com.nexus.rinde.incident.domain.model.commands.CloseIncidentCommand;
 import com.nexus.rinde.incident.domain.model.commands.ReportIncidentCommand;
 import com.nexus.rinde.incident.domain.model.commands.StartIncidentAttentionCommand;
@@ -15,8 +16,10 @@ import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Coordina el reporte, la atención y el cierre de incidencias con su persistencia. */
 @Service
@@ -87,6 +90,12 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
     Incident incident = find(command.tenantId(), command.incidentId());
     incident.close(command.closedBy(), command.action(), clock.instant());
     return incidentRepository.saveAndFlush(incident);
+  }
+
+  @Override
+  public Incident attachEvidence(AttachIncidentEvidenceCommand command) {
+    throw new ResponseStatusException(
+        HttpStatus.NOT_IMPLEMENTED, "Funcionalidad pendiente de implementar en S4-14.");
   }
 
   private Incident find(UUID tenantId, UUID incidentId) {
