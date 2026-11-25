@@ -36,6 +36,37 @@ public class DriverDeviceEntity {
 
   protected DriverDeviceEntity() {}
 
+  private DriverDeviceEntity(
+      UUID id,
+      UUID tenantId,
+      UUID userId,
+      String token,
+      String platform,
+      Instant createdAt,
+      Instant updatedAt) {
+    this.id = id;
+    this.tenantId = tenantId;
+    this.userId = userId;
+    this.token = token;
+    this.platform = platform;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
+
+  /** Crea un nuevo registro de dispositivo para notificaciones push del conductor. */
+  public static DriverDeviceEntity register(
+      UUID tenantId, UUID userId, String token, String platform, Instant now) {
+    return new DriverDeviceEntity(UUID.randomUUID(), tenantId, userId, token, platform, now, now);
+  }
+
+  /** Actualiza el propietario, la plataforma y la marca de uso sin duplicar el token. */
+  public void reassign(UUID tenantId, UUID userId, String platform, Instant now) {
+    this.tenantId = tenantId;
+    this.userId = userId;
+    this.platform = platform;
+    this.updatedAt = now;
+  }
+
   public UUID getId() {
     return id;
   }
