@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
 
   @Test
-  void vehicleHistoryReturns501ForManagersAnd403ForDriversAndIsInOpenApi() throws Exception {
+  void vehicleHistoryReturns404ForMissingVehicleAnd403ForDriversAndIsInOpenApi() throws Exception {
     UUID tenantId = UUID.randomUUID();
     UUID vehicleId = UUID.randomUUID();
     String managerToken =
@@ -23,8 +23,8 @@ class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
         .perform(
             get("/api/v1/vehicles/{id}/history", vehicleId)
                 .header("Authorization", "Bearer " + managerToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-13."));
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.detail").value("El vehículo no existe."));
 
     mockMvc
         .perform(

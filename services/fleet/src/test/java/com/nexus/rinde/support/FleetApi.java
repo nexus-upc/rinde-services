@@ -60,6 +60,18 @@ public class FleetApi {
     return mockMvc.perform(authorized(get("/api/v1/vehicles/" + vehicleId + "/health-status"), token));
   }
 
+  public ResultActions getVehicleHistory(String token, String vehicleId, String from, String to)
+      throws Exception {
+    MockHttpServletRequestBuilder request = get("/api/v1/vehicles/" + vehicleId + "/history");
+    if (from != null) {
+      request.param("from", from);
+    }
+    if (to != null) {
+      request.param("to", to);
+    }
+    return mockMvc.perform(authorized(request, token));
+  }
+
   public ResultActions recordMaintenance(
       String token,
       String vehicleId,
