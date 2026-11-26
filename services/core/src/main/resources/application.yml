@@ -59,16 +59,10 @@ rinde:
     exchange: ${RINDE_EVENTS_EXCHANGE:rinde.events}
     notification:
       queue: ${RINDE_NOTIFICATION_QUEUE:notification.trip-assigned}
-    subscription:
-      queue: ${RINDE_IAM_SUBSCRIPTION_QUEUE:iam.subscription-events}
   security:
     jwt:
       # Mínimo 32 caracteres.
       secret: ${JWT_SECRET}
-  billing:
-    simulation:
-      enabled: ${RINDE_BILLING_SIMULATION_ENABLED:false}
-      webhook-secret: ${RINDE_BILLING_SIMULATION_WEBHOOK_SECRET}
   iam:
     remote-enabled: ${RINDE_IAM_REMOTE_ENABLED:true}
     base-url: ${IAM_SERVICE_URL:http://localhost:8081}

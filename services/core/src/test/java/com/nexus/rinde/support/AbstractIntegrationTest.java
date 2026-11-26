@@ -38,7 +38,6 @@ public abstract class AbstractIntegrationTest {
     registry.add("rinde.incident.remote-enabled", () -> false);
     registry.add("rinde.messaging.notification.queue", () -> NOTIFICATION_QUEUE);
     registry.add("rinde.messaging.exchange", () -> NOTIFICATION_QUEUE + ".events");
-    registry.add("rinde.messaging.subscription.queue", () -> NOTIFICATION_QUEUE + ".subscriptions");
     registry.add("spring.rabbitmq.listener.simple.auto-startup", () -> false);
   }
 

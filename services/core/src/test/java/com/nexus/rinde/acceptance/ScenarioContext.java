@@ -26,8 +26,6 @@ public class ScenarioContext {
   private final Map<String, String> driverIds = new HashMap<>();
   private final Map<String, String> expenseIds = new HashMap<>();
   private final Map<String, String> settlementIds = new HashMap<>();
-  private final Map<String, String> planIds = new HashMap<>();
-  private final Map<String, String> subscriptionIds = new HashMap<>();
   private MvcResult lastResult;
   private String currentAdministratorToken;
   private String currentTenantId;
@@ -117,30 +115,6 @@ public class ScenarioContext {
 
   public String settlementIdOf(String name) {
     return settlementIds.get(name);
-  }
-
-  public void rememberPlanId(String name, String planId) {
-    planIds.put(name, planId);
-  }
-
-  public String planIdOf(String name) {
-    return planIds.get(name);
-  }
-
-  public void rememberSubscriptionId(String name, String subscriptionId) {
-    subscriptionIds.put(name, subscriptionId);
-  }
-
-  public String subscriptionIdOf(String name) {
-    return subscriptionIds.get(name);
-  }
-
-  public void rememberLatestSubscriptionId(String subscriptionId) {
-    rememberSubscriptionId("última", subscriptionId);
-  }
-
-  public String latestSubscriptionId() {
-    return subscriptionIdOf("última");
   }
 
   public String emailOfUserId(String userId) {

@@ -1,8 +1,8 @@
 # RINDE Backend (core)
 
-Monolito modular original de RINDE by NEXUS, dentro del monorepo. Atiende Settlement, Subscriptions & Billing, Notifications y Operations Dashboard; Incident tiene solo su estructura. Lo común viene de `rinde-shared-kernel` 0.2.0.
+Monolito modular original de RINDE by NEXUS, dentro del monorepo. Atiende Settlement, Notifications y Operations Dashboard; Incident tiene solo su estructura. Lo común viene de `rinde-shared-kernel` 0.2.0.
 
-De Trip, IAM, Fleet y Expense solo quedan las fachadas (`interfaces/acl`) y los clientes HTTP (`infrastructure/remote`) que usan Dashboard, Settlement, Subscriptions y Notifications. Sus controladores, servicios, dominio y repositorios se retiraron de core: esos contextos viven en sus servicios separados. Las migraciones antiguas de `db/migration/iam`, `trip`, `fleet` y `expense` ya se aplicaron y no se editan; core no las ejecuta.
+De Trip, IAM, Fleet y Expense solo quedan las fachadas (`interfaces/acl`) y los clientes HTTP (`infrastructure/remote`) que usan Dashboard, Settlement y Notifications. Sus controladores, servicios, dominio y repositorios se retiraron de core: esos contextos viven en sus servicios separados. Las migraciones antiguas de `db/migration/iam`, `trip`, `fleet` y `expense` ya se aplicaron y no se editan; core no las ejecuta.
 
 ## Ejecución
 
@@ -23,7 +23,7 @@ Core consulta los otros contextos a través de sus fachadas. Con la propiedad re
 |---|---|---|---|
 | IAM | `RINDE_IAM_REMOTE_ENABLED` | `IAM_SERVICE_URL`, 8081 | Usuarios, estado de la empresa y correo del administrador. |
 | Trip | `RINDE_TRIP_REMOTE_ENABLED` | `TRIP_SERVICE_URL`, 8082 | Viajes para Dashboard. |
-| Fleet | `RINDE_FLEET_REMOTE_ENABLED` | `FLEET_SERVICE_URL`, 8083 | Conteo de unidades para Subscriptions y listados para Dashboard. |
+| Fleet | `RINDE_FLEET_REMOTE_ENABLED` | `FLEET_SERVICE_URL`, 8083 | Listados para Dashboard. |
 | Expense | `RINDE_EXPENSE_REMOTE_ENABLED` | `EXPENSE_SERVICE_URL`, 8084 | Gastos aprobados para Settlement y gastos para Dashboard. |
 | Incident | `RINDE_INCIDENT_REMOTE_ENABLED` | `INCIDENT_SERVICE_URL`, 8085 | Incidencias abiertas para Dashboard (`/open-count` y `/open`). |
 
@@ -43,8 +43,6 @@ Todo pasa por el exchange durable `rinde.events`, en JSON y con `eventId` como c
 | Publica | `settlement.closed` | Settlement | Trip marca el viaje como liquidado y Expense bloquea sus gastos. |
 | Consume | `trip.assigned` | Notifications | Prepara el aviso al conductor. |
 | Consume | `fleet.maintenance-due` | Notifications | Prepara el correo al administrador. |
-| Publica | `subscription.activated`, `subscription.suspended` | Subscriptions | IAM actualiza el estado comercial de la empresa. |
-| Publica | `subscription.plan-changed` | Subscriptions | Fleet guarda el límite de unidades. |
 
 Los consumidores registran el `eventId` y no repiten el efecto. Cada cola tiene su cola `.dead` para los mensajes que fallan. La publicación pide confirmación al broker; si no llega, el error queda en el log con el `eventId` para conciliarlo.
 
@@ -64,8 +62,6 @@ Notifications utiliza `RINDE_PUSH_PROVIDER` (`unavailable` por defecto, o `fcm` 
 
 La migración V4 del módulo `notification` crea `company_notifications`, `notification_reads` y `driver_devices`.
 
-## Pago simulado
+## Subscriptions & Billing
 
-El webhook de pago usa `RINDE_BILLING_SIMULATION_WEBHOOK_SECRET`. Con `RINDE_BILLING_SIMULATION_ENABLED=true` se habilita `POST /api/v1/subscriptions/{id}/payments/{paymentId}/simulation`, que confirma o rechaza un pago de prueba desde la web sin exponer la clave del webhook. Está desactivado por defecto y solo se usa en pruebas.
-
-`GET /api/v1/subscriptions/current` devuelve la suscripción de la empresa autenticada, o 204 si aún no tiene una.
+Subscriptions & Billing vive en `services/subscription`; core ya no expone sus endpoints, su webhook de pago ni sus eventos.

@@ -1,7 +1,7 @@
 package com.nexus.rinde.notification.application.internal.commandservices;
 
-import com.nexus.rinde.subscription.interfaces.acl.PaymentReceiptRequested;
-import com.nexus.rinde.subscription.interfaces.acl.SubscriptionExpiring;
+import com.nexus.rinde.notification.domain.model.valueobjects.PaymentReceiptNotice;
+import com.nexus.rinde.notification.domain.model.valueobjects.SubscriptionExpiringNotice;
 import java.time.format.DateTimeFormatter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -18,7 +18,7 @@ public class SubscriptionEmailNotificationService {
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void handle(SubscriptionExpiring event) {
+  public void handle(SubscriptionExpiringNotice event) {
     String expiry = DateTimeFormatter.ISO_INSTANT.format(event.expiresAt());
     emailOutbox.queueOnce(
         event.eventId(),
@@ -28,7 +28,7 @@ public class SubscriptionEmailNotificationService {
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void handle(PaymentReceiptRequested event) {
+  public void handle(PaymentReceiptNotice event) {
     String body =
         "Pago simulado confirmado. Referencia: "
             + event.providerReference()
