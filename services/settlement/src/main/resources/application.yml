@@ -59,6 +59,8 @@ rinde:
     base-url: ${IAM_SERVICE_URL:http://localhost:8081}
   trip:
     base-url: ${TRIP_SERVICE_URL:http://localhost:8082}
+  fleet:
+    base-url: ${FLEET_SERVICE_URL:http://localhost:8083}
   expense:
     base-url: ${EXPENSE_SERVICE_URL:http://localhost:8084}
 

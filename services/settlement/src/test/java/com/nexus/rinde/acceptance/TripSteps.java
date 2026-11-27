@@ -42,9 +42,12 @@ public class TripSteps {
 
   @Dado("que el administrador asigna el viaje {string} al vehículo {string} y al conductor {string}")
   public void tripIsAssigned(String tripName, String vehicleName, String driverEmail) {
+    UUID tripId = UUID.fromString(context.tripIdOf(tripName));
+    UUID tenantId = context.currentTenantId();
+    UUID driverId = context.userIdOf(driverEmail);
     context.rememberTripDriver(tripName, driverEmail);
-    externalStubs.setTripStatus(
-        context.currentTenantId(), UUID.fromString(context.tripIdOf(tripName)), "ASSIGNED");
+    externalStubs.setTripStatus(tenantId, tripId, "ASSIGNED");
+    externalStubs.setTripDriver(tenantId, tripId, driverId);
   }
 
   @Dado("que el conductor inicia el viaje {string}")

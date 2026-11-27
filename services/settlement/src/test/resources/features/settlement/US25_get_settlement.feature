@@ -31,6 +31,13 @@ Característica: US25 Consultar el detalle de una liquidación
     Cuando el conductor "luis@andes.pe" consulta la liquidación "liq"
     Entonces la respuesta tiene código 200
 
+  Escenario: El conductor no puede consultar la liquidación de otro conductor
+    Dado que el administrador invitó a "Pedro López" con el correo "pedro@andes.pe" y el rol "DRIVER"
+    Y que "pedro@andes.pe" definió la contraseña "Clave-De-Pedro-2026" con su enlace de invitación
+    Y que el conductor "pedro@andes.pe" inició sesión
+    Cuando el conductor "pedro@andes.pe" consulta la liquidación "liq"
+    Entonces la respuesta tiene código 404
+
   Escenario: Consultar liquidación requiere autenticación
     Cuando una persona sin token consulta la liquidación "liq"
     Entonces la respuesta tiene código 401

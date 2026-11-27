@@ -15,7 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Pasos de gastos en el contexto del servicio Settlement. Los gastos viven en el microservicio
  * Expense; aquí se simulan configurando el stub WireMock para que el servicio Settlement reciba la
- * lista de gastos aprobados correcta cuando cierra o recalcula una liquidación.
+ * lista de gastos correcta cuando cierra o recalcula una liquidación.
  */
 public class ExpenseSteps {
 
@@ -39,23 +39,31 @@ public class ExpenseSteps {
   public void driverRegisteredExpense(String expenseName, String category, String amount,
       String key, String tripName) {
     UUID expenseId = UUID.randomUUID();
+    BigDecimal amountDecimal = new BigDecimal(amount);
+    UUID tripId = UUID.fromString(context.tripIdOf(tripName));
+    UUID tenantId = context.currentTenantId();
     context.rememberExpenseId(expenseName, expenseId.toString());
     expenseUuids.put(expenseName, expenseId);
     expenseTrips.put(expenseName, tripName);
-    expenseAmounts.put(expenseName, new BigDecimal(amount));
+    expenseAmounts.put(expenseName, amountDecimal);
     expenseCategories.put(expenseName, category);
-    // No configuramos el stub aún: solo se agrega cuando el administrador aprueba el gasto
+    externalStubs.registerExpense(tenantId, tripId, expenseId, category, amountDecimal, "PEN", "PENDING");
   }
 
   @Dado("que el administrador {string} aprobó el gasto {string}")
   public void adminApprovedExpense(String adminEmail, String expenseName) {
     UUID expenseId = expenseUuids.get(expenseName);
-    String tripName = expenseTrips.get(expenseName);
-    String tripId = context.tripIdOf(tripName);
-    BigDecimal amount = expenseAmounts.get(expenseName);
-    String category = expenseCategories.get(expenseName);
+    UUID tripId = UUID.fromString(context.tripIdOf(expenseTrips.get(expenseName)));
     UUID tenantId = context.currentTenantId();
-    externalStubs.addApprovedExpense(tenantId, UUID.fromString(tripId), expenseId, category, amount, "PEN");
+    externalStubs.setExpenseStatus(tenantId, tripId, expenseId, "APPROVED");
+  }
+
+  @Dado("que el administrador {string} observó el gasto {string}")
+  public void adminObservedExpense(String adminEmail, String expenseName) {
+    UUID expenseId = expenseUuids.get(expenseName);
+    UUID tripId = UUID.fromString(context.tripIdOf(expenseTrips.get(expenseName)));
+    UUID tenantId = context.currentTenantId();
+    externalStubs.setExpenseStatus(tenantId, tripId, expenseId, "OBSERVED");
   }
 
   @Cuando("el conductor {string} intenta consultar la liquidación del viaje {string}")

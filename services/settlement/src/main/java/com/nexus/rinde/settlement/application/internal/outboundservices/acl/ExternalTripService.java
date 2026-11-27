@@ -26,6 +26,8 @@ public class ExternalTripService {
   private static final Logger log = LoggerFactory.getLogger(ExternalTripService.class);
   private static final String STATUS_PATH =
       "/api/internal/v1/trips/tenants/{tenantId}/{tripId}/status";
+  private static final String DETAIL_PATH =
+      "/api/internal/v1/trips/tenants/{tenantId}/{tripId}";
   private static final String UNAVAILABLE = "No se pudo consultar el viaje en Trip.";
 
   private final RestClient restClient;
@@ -59,5 +61,25 @@ public class ExternalTripService {
     }
   }
 
+  /** Id del conductor asignado al viaje, o vacío si el viaje no existe para la empresa. */
+  public Optional<UUID> findDriverIdByTripId(UUID tenantId, UUID tripId) {
+    try {
+      TripDetailResponse response =
+          restClient
+              .get()
+              .uri(DETAIL_PATH, tenantId, tripId)
+              .retrieve()
+              .body(TripDetailResponse.class);
+      return Optional.ofNullable(response).map(TripDetailResponse::driverId);
+    } catch (HttpClientErrorException.NotFound ex) {
+      return Optional.empty();
+    } catch (RestClientException ex) {
+      log.warn("Trip no respondió el detalle del viaje: {}", ex.getMessage());
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, UNAVAILABLE);
+    }
+  }
+
   public record TripStatusResponse(UUID tripId, String status) {}
+
+  public record TripDetailResponse(UUID tripId, UUID driverId) {}
 }

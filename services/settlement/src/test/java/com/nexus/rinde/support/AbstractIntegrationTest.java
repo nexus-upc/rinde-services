@@ -26,6 +26,7 @@ public abstract class AbstractIntegrationTest {
     TestDatabase.registerUrl(registry);
     registry.add("rinde.iam.base-url", WireMockServices::baseUrl);
     registry.add("rinde.trip.base-url", WireMockServices::baseUrl);
+    registry.add("rinde.fleet.base-url", WireMockServices::baseUrl);
     registry.add("rinde.expense.base-url", WireMockServices::baseUrl);
     registry.add("spring.rabbitmq.listener.simple.auto-startup", () -> false);
   }
