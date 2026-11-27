@@ -1,5 +1,10 @@
 package com.nexus.rinde.acceptance;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -8,13 +13,17 @@ import com.nexus.rinde.fleet.infrastructure.messaging.FleetSubscriptionMessaging
 import com.nexus.rinde.fleet.interfaces.acl.PlanChanged;
 import com.nexus.rinde.support.FleetApi;
 import com.nexus.rinde.support.RelativeDates;
+import com.nexus.rinde.support.WireMockServices;
 import io.cucumber.java.es.Cuando;
 import io.cucumber.java.es.Dado;
 import io.cucumber.java.es.Y;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.StreamSupport;
@@ -495,5 +504,129 @@ public class FleetSteps {
         StreamSupport.stream(context.body().spliterator(), false)
             .anyMatch(node -> plate.equalsIgnoreCase(node.get("plateNumber").asText()));
     assertThat(found).isTrue();
+  }
+
+  // --- HISTORIAL DEL VEHÍCULO (S4-13) ---
+
+  @Dado("que Trip responde el viaje {string} para el vehículo {string} en fecha {string}")
+  public void tripRespondsWithTripForVehicle(String code, String vehicleName, String dateToken) {
+    UUID tenantId = context.currentTenantId();
+    String vehicleId = context.vehicleIdOf(vehicleName);
+    String tripDate = RelativeDates.resolve(dateToken);
+    String body =
+        """
+        [{"tripId":"%s","code":"%s","status":"FINISHED","origin":"Lima","destination":"Trujillo",\
+        "cargoDescription":"Materiales de construcción","cargoWeightKg":12000,\
+        "departureDate":"%s","vehicleId":"%s","driverId":"%s","startedAt":"%sT07:30:00Z"}]"""
+            .formatted(UUID.randomUUID(), code, tripDate, vehicleId, UUID.randomUUID(), tripDate);
+    WireMockServices.server()
+        .stubFor(get(urlEqualTo("/api/internal/v1/trips/tenants/" + tenantId)).willReturn(okJson(body)));
+  }
+
+  @Dado("que Trip no responde para la empresa de {string}")
+  public void tripFailsForTenant(String ruc) {
+    UUID tenantId = context.tenantIdOf(ruc);
+    WireMockServices.server()
+        .stubFor(
+            get(urlEqualTo("/api/internal/v1/trips/tenants/" + tenantId))
+                .willReturn(aResponse().withStatus(503)));
+  }
+
+  @Dado("que Incident responde la incidencia {string} para el vehículo {string} en fecha {string}")
+  public void incidentRespondsWithIncidentForVehicle(
+      String type, String vehicleName, String dateToken) {
+    UUID tenantId = context.currentTenantId();
+    String vehicleId = context.vehicleIdOf(vehicleName);
+    String incidentDate = RelativeDates.resolve(dateToken);
+    String body =
+        """
+        [{"id":"%s","tripId":"%s","vehicleId":"%s","type":"%s",\
+        "description":"Falla en el freno neumático","status":"CLOSED","reportedAt":"%sT13:20:00Z"}]"""
+            .formatted(UUID.randomUUID(), UUID.randomUUID(), vehicleId, type, incidentDate);
+    WireMockServices.server()
+        .stubFor(
+            get(urlPathEqualTo("/api/internal/v1/incidents/tenants/" + tenantId))
+                .willReturn(okJson(body)));
+  }
+
+  @Dado("que Incident no tiene incidencias para el vehículo {string}")
+  public void incidentReturnsEmptyForVehicle(String vehicleName) {
+    UUID tenantId = context.currentTenantId();
+    WireMockServices.server()
+        .stubFor(
+            get(urlPathEqualTo("/api/internal/v1/incidents/tenants/" + tenantId))
+                .willReturn(okJson("[]")));
+  }
+
+  @Cuando("el administrador consulta el historial del vehículo {string}")
+  public void adminConsultsVehicleHistory(String vehicleName) throws Exception {
+    context.record(
+        api.getVehicleHistory(
+            context.currentAdministratorToken(), context.vehicleIdOf(vehicleName), null, null));
+  }
+
+  @Cuando(
+      "el administrador consulta el historial del vehículo {string} desde {string} hasta {string}")
+  public void adminConsultsVehicleHistoryWithRange(String vehicleName, String from, String to)
+      throws Exception {
+    context.record(
+        api.getVehicleHistory(
+            context.currentAdministratorToken(),
+            context.vehicleIdOf(vehicleName),
+            RelativeDates.resolve(from),
+            RelativeDates.resolve(to)));
+  }
+
+  @Cuando("el administrador {string} consulta el historial del vehículo {string}")
+  public void specificAdminConsultsVehicleHistory(String email, String vehicleName)
+      throws Exception {
+    context.record(
+        api.getVehicleHistory(
+            context.accessTokenOf(email), context.vehicleIdOf(vehicleName), null, null));
+  }
+
+  @Y("la próxima fecha de mantenimiento en el historial es {string}")
+  public void historyNextMaintenanceDateIs(String dateToken) throws Exception {
+    assertThat(context.body().get("nextMaintenanceDate").asText())
+        .isEqualTo(RelativeDates.resolve(dateToken));
+  }
+
+  @Y("el historial tiene {int} eventos ordenados de más reciente a más antiguo")
+  public void historyHasOrderedItems(int count) throws Exception {
+    JsonNode items = context.body().get("items");
+    assertThat(items.isArray()).isTrue();
+    assertThat(items.size()).isEqualTo(count);
+    List<Instant> dates = new ArrayList<>();
+    for (JsonNode item : items) {
+      dates.add(Instant.parse(item.get("date").asText()));
+    }
+    assertThat(dates).isSortedAccordingTo(Comparator.reverseOrder());
+  }
+
+  @Y("el historial no está marcado como parcial")
+  public void historyIsNotPartial() throws Exception {
+    assertThat(context.body().get("partial").asBoolean()).isFalse();
+    assertThat(context.body().get("unavailableSources").size()).isZero();
+  }
+
+  @Y("el historial está marcado como parcial con la fuente {string} no disponible")
+  public void historyIsPartialWithUnavailableSource(String source) throws Exception {
+    assertThat(context.body().get("partial").asBoolean()).isTrue();
+    List<String> sources = new ArrayList<>();
+    for (JsonNode node : context.body().get("unavailableSources")) {
+      sources.add(node.asText());
+    }
+    assertThat(sources).contains(source);
+  }
+
+  @Y("el historial contiene {int} evento de tipo {string} sin estado")
+  public void historyContainsEventsWithoutStatus(int count, String type) throws Exception {
+    JsonNode items = context.body().get("items");
+    List<JsonNode> matching =
+        StreamSupport.stream(items.spliterator(), false)
+            .filter(node -> type.equals(node.get("type").asText()))
+            .toList();
+    assertThat(matching).hasSize(count);
+    assertThat(matching).allMatch(node -> node.get("status").isNull());
   }
 }
