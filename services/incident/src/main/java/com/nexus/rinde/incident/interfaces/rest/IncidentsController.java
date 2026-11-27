@@ -293,12 +293,17 @@ public class IncidentsController {
   public ResponseEntity<IncidentResource> attachEvidence(
       @PathVariable UUID id, @RequestPart(value = "file", required = false) MultipartFile file)
       throws IOException {
-    byte[] bytes = file != null ? file.getBytes() : new byte[0];
-    String filename = file != null ? file.getOriginalFilename() : null;
+    if (file == null) {
+      throw new BusinessRuleException("Adjunte el comprobante en el campo file.");
+    }
     Incident incident =
         commandService.attachEvidence(
             new AttachIncidentEvidenceCommand(
-                TenantContext.tenantId(), id, TenantContext.userId(), filename, bytes));
+                TenantContext.tenantId(),
+                id,
+                TenantContext.userId(),
+                file.getOriginalFilename(),
+                file.getBytes()));
     IncidentResource resource = IncidentResourceFromEntityAssembler.toResource(incident);
     URI location =
         resource.evidence() != null

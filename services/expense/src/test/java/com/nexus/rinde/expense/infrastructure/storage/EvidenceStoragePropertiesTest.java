@@ -14,13 +14,23 @@ class EvidenceStoragePropertiesTest {
   }
 
   @Test
-  void rejectsAzureBlobUntilImplementedInSprint4() {
+  void acceptsAzureBlobWithConnectionStringAndContainer() {
+    EvidenceStorageProperties properties = new EvidenceStorageProperties();
+    properties.setType("azure-blob");
+    properties.getBlob().setConnectionString("UseDevelopmentStorage=true");
+    properties.getBlob().setContainer("rinde-evidences-private");
+
+    assertThatCode(properties::validate).doesNotThrowAnyException();
+  }
+
+  @Test
+  void rejectsAzureBlobWithoutConnectionStringOrContainer() {
     EvidenceStorageProperties properties = new EvidenceStorageProperties();
     properties.setType("azure-blob");
 
     assertThatThrownBy(properties::validate)
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("El adaptador de almacenamiento azure-blob está pendiente de implementar en S4-14.");
+        .hasMessageContaining("RINDE_EVIDENCE_BLOB_CONNECTION_STRING");
   }
 
   @Test

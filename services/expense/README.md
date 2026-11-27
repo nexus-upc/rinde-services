@@ -32,7 +32,7 @@ Antes de registrar o sincronizar, el servicio consulta a Trip el estado y conduc
 
 - Formatos: JPEG, PNG, WEBP y PDF. Se reconocen por la firma inicial del contenido, no por el nombre ni por el tipo que declara el cliente.
 - Tamaño máximo: `RINDE_EVIDENCE_MAX_SIZE_BYTES`, 5 MB (5242880 bytes) por defecto. Por encima, la respuesta es 413. El límite del contenedor de multipart es 10 MB.
-- Almacenamiento: el puerto `EvidenceStorage` del dominio tiene un adaptador de carpeta local, `RINDE_EVIDENCE_STORAGE_PATH` (`./data/evidences` por defecto). En Docker la carpeta es el volumen `expense-evidence-data`. Las claves son `{tenantId}/{expenseId}/{uuid}`; no son rutas que venga del cliente.
+- Almacenamiento: el puerto `EvidenceStorage` del dominio cuenta con adaptador de carpeta local (`local`, `RINDE_EVIDENCE_STORAGE_PATH`) y adaptador privado de Azure Blob Storage (`azure-blob`, `RINDE_EVIDENCE_BLOB_CONNECTION_STRING` y `RINDE_EVIDENCE_BLOB_CONTAINER`). Las claves son `{tenantId}/{expenseId}/{uuid}`; no son rutas que vengan del cliente.
 - Metadatos: nombre del archivo sin rutas, formato, tamaño, SHA-256, quién lo subió y cuándo. La lectura verifica la huella guardada antes de responder.
 - Reemplazo: un comprobante nuevo sustituye al anterior en el mismo registro. El archivo anterior se borra después de confirmar el cambio.
 - Lectura: el administrador y el responsable de operaciones de la empresa leen cualquier comprobante de sus gastos; el conductor, solo los suyos. Otro conductor recibe 403 y una empresa ajena recibe 404. La ruta `contentUrl` exige JWT: no es un enlace público.
@@ -65,7 +65,6 @@ Publica `expense.registered` en `rinde.events` después del commit al crearse un
 
 ## Límites conocidos
 
-- Solo hay almacenamiento local. El puerto está listo para un adaptador de objetos, pero no hay proveedor conectado.
 - No se decodifica la imagen ni se analiza el archivo con antivirus; la validación es por firma inicial.
 - Guardar el archivo y confirmar la base no es atómico: si la base falla después de guardar, puede quedar un archivo sin registro.
 - Un gasto aprobado también admite comprobante nuevo mientras no esté bloqueado por liquidación. Falta decidir si la revisión debe congelar el comprobante.

@@ -52,6 +52,14 @@ public class ScenarioContext {
     return objectMapper.readTree(lastResult.getResponse().getContentAsString());
   }
 
+  public byte[] lastResponseBytes() {
+    return lastResult.getResponse().getContentAsByteArray();
+  }
+
+  public String lastContentType() {
+    return lastResult.getResponse().getContentType();
+  }
+
   public void rememberTenant(String ruc, UUID tenantId) {
     tenantIds.put(ruc, tenantId);
   }

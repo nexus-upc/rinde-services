@@ -1,7 +1,9 @@
 package com.nexus.rinde.incident.interfaces.rest.transform;
 
 import com.nexus.rinde.incident.domain.model.aggregates.Incident;
+import com.nexus.rinde.incident.domain.model.entities.IncidentEvidence;
 import com.nexus.rinde.incident.domain.model.valueobjects.IncidentResolution;
+import com.nexus.rinde.incident.interfaces.rest.resources.IncidentEvidenceResource;
 import com.nexus.rinde.incident.interfaces.rest.resources.IncidentResolutionResource;
 import com.nexus.rinde.incident.interfaces.rest.resources.IncidentResource;
 
@@ -17,6 +19,8 @@ public final class IncidentResourceFromEntityAssembler {
             ? null
             : new IncidentResolutionResource(
                 resolution.getAction(), resolution.getClosedBy(), resolution.getClosedAt());
+    IncidentEvidenceResource evidenceResource =
+        incident.getEvidence() == null ? null : toEvidenceResource(incident, incident.getEvidence());
 
     return new IncidentResource(
         incident.getId(),
@@ -26,10 +30,25 @@ public final class IncidentResourceFromEntityAssembler {
         incident.getType(),
         incident.getDescription(),
         incident.getEvidenceUrl(),
-        null,
+        evidenceResource,
         incident.getStatus(),
         incident.getReportedAt(),
         resolutionResource,
         incident.getUpdatedAt());
+  }
+
+  /** Construye los metadatos públicos de la evidencia con su ruta autenticada. */
+  private static IncidentEvidenceResource toEvidenceResource(
+      Incident incident, IncidentEvidence evidence) {
+    String contentUrl =
+        "/api/v1/incidents/%s/evidences/%s/content".formatted(incident.getId(), evidence.getId());
+    return new IncidentEvidenceResource(
+        evidence.getId(),
+        evidence.getFileName(),
+        evidence.getContentType(),
+        evidence.getFileSizeBytes(),
+        evidence.getSha256(),
+        contentUrl,
+        evidence.getUploadedAt());
   }
 }

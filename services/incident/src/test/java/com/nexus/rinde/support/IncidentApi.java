@@ -1,6 +1,7 @@
 package com.nexus.rinde.support;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -9,9 +10,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 
 /** Cliente de pruebas para los endpoints de Incident Management. */
 public class IncidentApi {
@@ -67,6 +70,21 @@ public class IncidentApi {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("action", action);
     return perform(post("/api/v1/incidents/" + incidentId + "/close"), token, body);
+  }
+
+  /** Sube la evidencia binaria de una incidencia en el campo multipart file. */
+  public ResultActions uploadEvidence(
+      String token, String incidentId, String fileName, String contentType, byte[] content)
+      throws Exception {
+    MockMultipartHttpServletRequestBuilder request =
+        multipart("/api/v1/incidents/" + incidentId + "/evidences")
+            .file(new MockMultipartFile("file", fileName, contentType, content));
+    return mockMvc.perform(authorized(request, token));
+  }
+
+  /** Consulta el contenido binario de la evidencia desde su ruta contentUrl. */
+  public ResultActions content(String token, String contentUrl) throws Exception {
+    return mockMvc.perform(authorized(get(contentUrl), token));
   }
 
   private ResultActions perform(MockHttpServletRequestBuilder request, String token, Object body)

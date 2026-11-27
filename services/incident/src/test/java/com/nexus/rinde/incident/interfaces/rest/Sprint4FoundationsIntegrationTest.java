@@ -14,22 +14,23 @@ import org.springframework.mock.web.MockMultipartFile;
 class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
 
   @Test
-  void incidentEvidenceEndpointsEnforceRolesReturn501AndAppearInOpenApi() throws Exception {
+  void incidentEvidenceEndpointsEnforceRolesAndAppearInOpenApi() throws Exception {
     UUID tenantId = UUID.randomUUID();
     UUID incidentId = UUID.randomUUID();
     UUID evidenceId = UUID.randomUUID();
     String driverToken = tokens.issue(UUID.randomUUID(), tenantId, "DRIVER", "driver@rinde.pe");
     String adminToken = tokens.issue(UUID.randomUUID(), tenantId, "ADMINISTRATOR", "admin@rinde.pe");
     MockMultipartFile file =
-        new MockMultipartFile("file", "foto.jpg", "image/jpeg", new byte[] {1, 2, 3});
+        new MockMultipartFile(
+            "file", "foto.jpg", "image/jpeg", new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
 
     mockMvc
         .perform(
             multipart("/api/v1/incidents/{id}/evidences", incidentId)
                 .file(file)
                 .header("Authorization", "Bearer " + driverToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-14."));
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.detail").value("La incidencia no existe."));
 
     mockMvc
         .perform(
@@ -42,8 +43,8 @@ class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
         .perform(
             get("/api/v1/incidents/{id}/evidences/{evidenceId}/content", incidentId, evidenceId)
                 .header("Authorization", "Bearer " + driverToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-14."));
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.detail").value("La incidencia no existe."));
 
     mockMvc
         .perform(

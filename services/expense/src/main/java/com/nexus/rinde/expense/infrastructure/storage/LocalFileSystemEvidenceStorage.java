@@ -10,15 +10,14 @@ import java.nio.file.StandardOpenOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 /** Adaptador de comprobantes en una carpeta local. En Docker la carpeta es un volumen. */
 @Component
-@ConditionalOnProperty(
-    name = "rinde.evidence.storage.type",
-    havingValue = "local",
-    matchIfMissing = true)
+@ConditionalOnExpression(
+    "'${rinde.evidence.storage.type:local}'.trim().isEmpty()"
+        + " or '${rinde.evidence.storage.type:local}'.trim() == 'local'")
 public class LocalFileSystemEvidenceStorage implements EvidenceStorage {
 
   private static final Logger log = LoggerFactory.getLogger(LocalFileSystemEvidenceStorage.class);
@@ -27,7 +26,9 @@ public class LocalFileSystemEvidenceStorage implements EvidenceStorage {
 
   public LocalFileSystemEvidenceStorage(
       @Value("${rinde.evidence.storage.local-path:./data/evidences}") String localPath) {
-    this.root = Path.of(localPath).toAbsolutePath().normalize();
+    String effectivePath =
+        (localPath == null || localPath.isBlank()) ? "./data/evidences" : localPath.trim();
+    this.root = Path.of(effectivePath).toAbsolutePath().normalize();
   }
 
   @Override

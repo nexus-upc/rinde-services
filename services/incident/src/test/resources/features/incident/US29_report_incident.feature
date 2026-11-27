@@ -65,3 +65,35 @@ Característica: US29 Reportar una incidencia desde el móvil
   Escenario: Reportar una incidencia requiere iniciar sesión
     Cuando una persona sin token reporta una incidencia en el viaje "viaje"
     Entonces la respuesta tiene código 401
+
+  Escenario: Adjuntar y reemplazar la foto de evidencia de una incidencia con lectura autorizada
+    Dado que el conductor "luis@andes.pe" reportó la incidencia "freno" de tipo "BREAKDOWN" con la descripción "Falla en el freno neumático" sin evidencia en el viaje "viaje"
+    Cuando el conductor "luis@andes.pe" sube la evidencia "foto-freno.jpg" a la incidencia "freno"
+    Entonces la respuesta tiene código 201
+    Y la incidencia incluye la evidencia "foto-freno.jpg" de tipo "image/jpeg"
+    Cuando el usuario "ana@andes.pe" descarga la evidencia de la incidencia "freno"
+    Entonces la respuesta tiene código 200
+    Y la evidencia descargada coincide con "foto-freno.jpg" y tipo "image/jpeg"
+    Cuando el conductor "luis@andes.pe" sube la evidencia "informe-freno.pdf" a la incidencia "freno"
+    Entonces la respuesta tiene código 201
+    Y la incidencia incluye la evidencia "informe-freno.pdf" de tipo "application/pdf"
+
+  Escenario: Otro conductor de la empresa no puede subir ni leer la evidencia de una incidencia ajena
+    Dado que el conductor "luis@andes.pe" reportó la incidencia "llanta" de tipo "BREAKDOWN" con la descripción "Llanta baja" sin evidencia en el viaje "viaje"
+    Cuando el conductor "marta@andes.pe" sube la evidencia "intrusa.jpg" a la incidencia "llanta"
+    Entonces la respuesta tiene código 403
+    Y el mensaje de error es "Solo el conductor que reportó la incidencia puede adjuntar su evidencia."
+    Cuando el conductor "luis@andes.pe" sube la evidencia "llanta.jpg" a la incidencia "llanta"
+    Entonces la respuesta tiene código 201
+    Cuando el usuario "marta@andes.pe" descarga la evidencia de la incidencia "llanta"
+    Entonces la respuesta tiene código 403
+    Y el mensaje de error es "No tiene permiso para ver esta evidencia."
+
+  Escenario: Rechazar evidencia vacía o con formato no permitido en una incidencia
+    Dado que el conductor "luis@andes.pe" reportó la incidencia "peaje" de tipo "DELAY" con la descripción "Cola extensa" sin evidencia en el viaje "viaje"
+    Cuando el conductor "luis@andes.pe" sube la evidencia "vacio.jpg" a la incidencia "peaje"
+    Entonces la respuesta tiene código 400
+    Y el mensaje de error es "El archivo del comprobante está vacío."
+    Cuando el conductor "luis@andes.pe" sube la evidencia "script.txt" a la incidencia "peaje"
+    Entonces la respuesta tiene código 400
+    Y el mensaje de error es "Formato no permitido. Adjunte una foto en JPEG, PNG o WEBP, o un PDF."
