@@ -26,3 +26,6 @@ logs/
 .env.*
 !.env.example
 
+# Documentos locales (no van al repo)
+*.pdf
+
