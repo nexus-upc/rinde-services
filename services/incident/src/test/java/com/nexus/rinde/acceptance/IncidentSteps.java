@@ -270,6 +270,68 @@ public class IncidentSteps {
                 assertThat(event.vehicleId()).isEqualTo(context.vehicleIdOf(vehicleName)));
   }
 
+  @Cuando("el conductor {string} sube la evidencia {string} a la incidencia {string}")
+  public void driverUploadsEvidenceToIncident(String email, String fileName, String incidentName)
+      throws Exception {
+    context.record(
+        api.uploadEvidence(
+            context.accessTokenOf(email),
+            context.incidentIdOf(incidentName).toString(),
+            fileName,
+            sampleContentType(fileName),
+            sampleBytes(fileName)));
+  }
+
+  @Cuando("el usuario {string} descarga la evidencia de la incidencia {string}")
+  public void userDownloadsIncidentEvidence(String email, String incidentName) throws Exception {
+    String adminToken = administratorToken();
+    String detailJson =
+        api.detail(adminToken, context.incidentIdOf(incidentName).toString())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    String contentUrl =
+        new ObjectMapper().readTree(detailJson).get("evidence").get("contentUrl").asText();
+    context.record(api.content(context.accessTokenOf(email), contentUrl));
+  }
+
+  @Y("la incidencia incluye la evidencia {string} de tipo {string}")
+  public void incidentIncludesEvidence(String expectedName, String expectedType) throws Exception {
+    JsonNode evidence = context.body().get("evidence");
+    assertThat(evidence).isNotNull();
+    assertThat(evidence.get("fileName").asText()).isEqualTo(expectedName);
+    assertThat(evidence.get("contentType").asText()).isEqualTo(expectedType);
+    assertThat(evidence.get("contentUrl").asText()).isNotBlank();
+  }
+
+  @Y("la evidencia descargada coincide con {string} y tipo {string}")
+  public void downloadedEvidenceMatches(String fileName, String expectedType) {
+    assertThat(context.lastContentType()).isEqualTo(expectedType);
+    assertThat(context.lastResponseBytes()).isEqualTo(sampleBytes(fileName));
+  }
+
+  private static String sampleContentType(String fileName) {
+    if (fileName.endsWith(".png")) return "image/png";
+    if (fileName.endsWith(".pdf")) return "application/pdf";
+    return "image/jpeg";
+  }
+
+  private static byte[] sampleBytes(String fileName) {
+    if ("vacio.jpg".equals(fileName)) {
+      return new byte[0];
+    }
+    if (fileName.endsWith(".txt") || fileName.endsWith(".exe")) {
+      return new byte[] {'N', 'O', 'P', 'E'};
+    }
+    if (fileName.endsWith(".png")) {
+      return new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0x11};
+    }
+    if (fileName.endsWith(".pdf")) {
+      return new byte[] {'%', 'P', 'D', 'F', '-', '1', '.', '7'};
+    }
+    return new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x42, 0x43};
+  }
+
   private void report(
       String driver,
       String name,

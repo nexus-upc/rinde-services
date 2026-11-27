@@ -13,16 +13,25 @@ public class IncidentEvidenceStorageProperties {
 
   @PostConstruct
   void validate() {
-    String normalized = type == null ? "local" : type.trim();
+    String normalized = isBlank(type) ? "local" : type.trim();
     if ("azure-blob".equals(normalized)) {
-      throw new IllegalStateException(
-          "El adaptador de almacenamiento azure-blob de incidencias está pendiente de implementar"
-              + " en S4-14.");
+      if (blob == null
+          || isBlank(blob.getConnectionString())
+          || isBlank(blob.getContainer())) {
+        throw new IllegalStateException(
+            "Para azure-blob debe configurar RINDE_EVIDENCE_BLOB_CONNECTION_STRING y"
+                + " RINDE_EVIDENCE_BLOB_CONTAINER.");
+      }
+      return;
     }
     if (!"local".equals(normalized)) {
       throw new IllegalStateException(
           "Tipo de almacenamiento de evidencias no válido: " + normalized);
     }
+  }
+
+  private static boolean isBlank(String value) {
+    return value == null || value.isBlank();
   }
 
   public String getType() {

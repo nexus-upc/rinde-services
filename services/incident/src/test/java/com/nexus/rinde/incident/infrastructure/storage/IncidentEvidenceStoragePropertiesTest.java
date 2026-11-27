@@ -14,14 +14,32 @@ class IncidentEvidenceStoragePropertiesTest {
   }
 
   @Test
-  void rejectsAzureBlobUntilImplementedInSprint4() {
+  void acceptsAzureBlobWithConnectionStringAndContainer() {
+    IncidentEvidenceStorageProperties properties = new IncidentEvidenceStorageProperties();
+    properties.setType("azure-blob");
+    properties.getBlob().setConnectionString("UseDevelopmentStorage=true");
+    properties.getBlob().setContainer("rinde-incidents-private");
+
+    assertThatCode(properties::validate).doesNotThrowAnyException();
+  }
+
+  @Test
+  void rejectsAzureBlobWithoutConnectionStringOrContainer() {
     IncidentEvidenceStorageProperties properties = new IncidentEvidenceStorageProperties();
     properties.setType("azure-blob");
 
     assertThatThrownBy(properties::validate)
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage(
-            "El adaptador de almacenamiento azure-blob de incidencias está pendiente de implementar"
-                + " en S4-14.");
+        .hasMessageContaining("RINDE_EVIDENCE_BLOB_CONNECTION_STRING");
+  }
+
+  @Test
+  void rejectsUnknownStorageType() {
+    IncidentEvidenceStorageProperties properties = new IncidentEvidenceStorageProperties();
+    properties.setType("s3");
+
+    assertThatThrownBy(properties::validate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("no válido");
   }
 }

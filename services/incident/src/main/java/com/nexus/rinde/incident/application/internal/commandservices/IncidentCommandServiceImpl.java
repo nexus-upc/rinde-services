@@ -5,21 +5,26 @@ import com.nexus.rinde.incident.domain.model.commands.AttachIncidentEvidenceComm
 import com.nexus.rinde.incident.domain.model.commands.CloseIncidentCommand;
 import com.nexus.rinde.incident.domain.model.commands.ReportIncidentCommand;
 import com.nexus.rinde.incident.domain.model.commands.StartIncidentAttentionCommand;
+import com.nexus.rinde.incident.domain.model.valueobjects.IncidentEvidenceFile;
 import com.nexus.rinde.incident.domain.model.valueobjects.ReportOutcome;
 import com.nexus.rinde.incident.domain.model.valueobjects.TripSnapshot;
 import com.nexus.rinde.incident.domain.services.DriverLookupService;
 import com.nexus.rinde.incident.domain.services.IncidentCommandService;
+import com.nexus.rinde.incident.domain.services.IncidentEvidenceStorage;
 import com.nexus.rinde.incident.domain.services.TripLookupService;
 import com.nexus.rinde.incident.infrastructure.persistence.jpa.repositories.IncidentRepository;
+import com.nexus.rinde.shared.domain.exceptions.BusinessRuleException;
 import com.nexus.rinde.shared.domain.exceptions.ConflictException;
+import com.nexus.rinde.shared.domain.exceptions.ForbiddenOperationException;
 import com.nexus.rinde.shared.domain.exceptions.ResourceNotFoundException;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** Coordina el reporte, la atención y el cierre de incidencias con su persistencia. */
 @Service
@@ -30,17 +35,26 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
   private final IncidentRepository incidentRepository;
   private final TripLookupService tripLookupService;
   private final DriverLookupService driverLookupService;
+  private final IncidentEvidenceStorage evidenceStorage;
   private final Clock clock;
+  private final long maxEvidenceSizeBytes;
 
   public IncidentCommandServiceImpl(
       IncidentRepository incidentRepository,
       TripLookupService tripLookupService,
       DriverLookupService driverLookupService,
-      Clock clock) {
+      IncidentEvidenceStorage evidenceStorage,
+      Clock clock,
+      @Value("${rinde.evidence.max-size-bytes:5242880}") String maxEvidenceSizeBytes) {
     this.incidentRepository = incidentRepository;
     this.tripLookupService = tripLookupService;
     this.driverLookupService = driverLookupService;
+    this.evidenceStorage = evidenceStorage;
     this.clock = clock;
+    this.maxEvidenceSizeBytes =
+        (maxEvidenceSizeBytes == null || maxEvidenceSizeBytes.isBlank())
+            ? 5242880L
+            : Long.parseLong(maxEvidenceSizeBytes.trim());
   }
 
   /**
@@ -92,10 +106,49 @@ public class IncidentCommandServiceImpl implements IncidentCommandService {
     return incidentRepository.saveAndFlush(incident);
   }
 
+  /** Guarda el archivo de evidencia y borra el anterior después de confirmar la transacción. */
   @Override
+  @Transactional
   public Incident attachEvidence(AttachIncidentEvidenceCommand command) {
-    throw new ResponseStatusException(
-        HttpStatus.NOT_IMPLEMENTED, "Funcionalidad pendiente de implementar en S4-14.");
+    if (command.originalFilename() == null
+        && (command.content() == null || command.content().length == 0)) {
+      throw new BusinessRuleException("Adjunte el comprobante en el campo file.");
+    }
+    Incident incident = find(command.tenantId(), command.incidentId());
+    if (!incident.isReportedBy(command.userId())) {
+      throw new ForbiddenOperationException(
+          "Solo el conductor que reportó la incidencia puede adjuntar su evidencia.");
+    }
+
+    IncidentEvidenceFile file =
+        IncidentEvidenceFile.inspect(
+            command.originalFilename(), command.content(), maxEvidenceSizeBytes);
+    String storageKey = command.tenantId() + "/" + incident.getId() + "/" + UUID.randomUUID();
+    evidenceStorage.save(storageKey, command.content());
+
+    String previousKey =
+        incident.attachEvidence(file, storageKey, command.userId(), clock.instant());
+    Incident saved = incidentRepository.saveAndFlush(incident);
+    deleteAfterCommit(previousKey);
+    return saved;
+  }
+
+  /** Elimina el archivo reemplazado únicamente tras confirmarse la transacción en base de datos. */
+  private void deleteAfterCommit(String previousKey) {
+    if (previousKey == null) {
+      return;
+    }
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      evidenceStorage.delete(previousKey);
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            evidenceStorage.delete(previousKey);
+          }
+        });
   }
 
   private Incident find(UUID tenantId, UUID incidentId) {

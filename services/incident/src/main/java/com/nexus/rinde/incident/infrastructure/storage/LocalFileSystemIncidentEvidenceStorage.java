@@ -8,23 +8,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 /** Adaptador local de evidencias de incidencias para entorno de desarrollo. */
 @Component
-@ConditionalOnProperty(
-    name = "rinde.evidence.storage.type",
-    havingValue = "local",
-    matchIfMissing = true)
+@ConditionalOnExpression(
+    "'${rinde.evidence.storage.type:local}'.trim().isEmpty()"
+        + " or '${rinde.evidence.storage.type:local}'.trim() == 'local'")
 public class LocalFileSystemIncidentEvidenceStorage implements IncidentEvidenceStorage {
+
+  private static final Logger log =
+      LoggerFactory.getLogger(LocalFileSystemIncidentEvidenceStorage.class);
 
   private final Path root;
 
   public LocalFileSystemIncidentEvidenceStorage(
       @Value("${rinde.evidence.storage.local-path:./data/evidences}") String localPath) {
-    this.root = Path.of(localPath).toAbsolutePath().normalize();
+    String effectivePath =
+        (localPath == null || localPath.isBlank()) ? "./data/evidences" : localPath.trim();
+    this.root = Path.of(effectivePath).toAbsolutePath().normalize();
   }
 
   @Override
@@ -63,13 +69,13 @@ public class LocalFileSystemIncidentEvidenceStorage implements IncidentEvidenceS
     try {
       Files.deleteIfExists(resolveSafe(storageKey));
     } catch (IOException ex) {
-      throw new UncheckedIOException("No se pudo eliminar la evidencia en disco.", ex);
+      log.warn("No se pudo eliminar una evidencia reemplazada en disco: {}", ex.getMessage());
     }
   }
 
   private Path resolveSafe(String storageKey) {
     Path resolved = root.resolve(storageKey).normalize();
-    if (!resolved.startsWith(root)) {
+    if (!resolved.startsWith(root) || resolved.equals(root)) {
       throw new IllegalArgumentException("Clave de almacenamiento fuera de la carpeta configurada.");
     }
     return resolved;

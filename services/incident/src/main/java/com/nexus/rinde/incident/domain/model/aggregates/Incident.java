@@ -1,8 +1,10 @@
 package com.nexus.rinde.incident.domain.model.aggregates;
 
 import com.nexus.rinde.incident.domain.model.commands.ReportIncidentCommand;
+import com.nexus.rinde.incident.domain.model.entities.IncidentEvidence;
 import com.nexus.rinde.incident.domain.model.events.IncidentClosed;
 import com.nexus.rinde.incident.domain.model.events.IncidentReported;
+import com.nexus.rinde.incident.domain.model.valueobjects.IncidentEvidenceFile;
 import com.nexus.rinde.incident.domain.model.valueobjects.IncidentResolution;
 import com.nexus.rinde.incident.domain.model.valueobjects.IncidentStatus;
 import com.nexus.rinde.incident.domain.model.valueobjects.IncidentType;
@@ -13,12 +15,14 @@ import com.nexus.rinde.shared.domain.exceptions.ForbiddenOperationException;
 import com.nexus.rinde.shared.domain.model.aggregates.AuditableAbstractAggregateRoot;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
@@ -84,6 +88,9 @@ public class Incident extends AuditableAbstractAggregateRoot {
     @AttributeOverride(name = "closedAt", column = @Column(name = "resolution_closed_at"))
   })
   private IncidentResolution resolution;
+
+  @OneToOne(mappedBy = "incident", cascade = CascadeType.ALL, orphanRemoval = true)
+  private IncidentEvidence evidence;
 
   protected Incident() {}
 
@@ -179,6 +186,24 @@ public class Incident extends AuditableAbstractAggregateRoot {
     return userId != null && userId.equals(reportedBy);
   }
 
+  /** Adjunta o reemplaza la evidencia de la incidencia y devuelve la clave anterior si existía. */
+  public String attachEvidence(
+      IncidentEvidenceFile file, String storageKey, UUID uploadedBy, Instant now) {
+    if (!isReportedBy(uploadedBy)) {
+      throw new ForbiddenOperationException(
+          "Solo el conductor que reportó la incidencia puede adjuntar su evidencia.");
+    }
+    Instant uploadedAt = now != null ? now : Instant.now();
+    String previousKey = null;
+    if (evidence == null) {
+      evidence = new IncidentEvidence(this, tenantId, file, storageKey, uploadedBy, uploadedAt);
+    } else {
+      previousKey = evidence.getStorageKey();
+      evidence.replaceFile(file, storageKey, uploadedBy, uploadedAt);
+    }
+    return previousKey;
+  }
+
   private static String trimToNull(String value) {
     if (value == null || value.isBlank()) {
       return null;
@@ -228,5 +253,9 @@ public class Incident extends AuditableAbstractAggregateRoot {
 
   public IncidentResolution getResolution() {
     return resolution;
+  }
+
+  public IncidentEvidence getEvidence() {
+    return evidence;
   }
 }

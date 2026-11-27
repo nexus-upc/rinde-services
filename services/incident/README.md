@@ -22,8 +22,8 @@ Puerto 8085. Swagger: http://localhost:8085/swagger-ui.html. Flyway crea el esqu
 | GET | `/api/v1/incidents/{id}` | Cualquiera autenticado | Detalle. El conductor solo ve las que reportó; otra incidencia responde 404 (US30). |
 | PATCH | `/api/v1/incidents/{id}/status` | ADMINISTRATOR, OPERATIONS_MANAGER | Pasa una incidencia abierta a `IN_PROGRESS` (US31). |
 | POST | `/api/v1/incidents/{id}/close` | ADMINISTRATOR, OPERATIONS_MANAGER | Cierra la incidencia con la acción tomada, quién la atendió y la fecha (US31). |
-| POST | `/api/v1/incidents/{id}/evidences` | DRIVER | Adjunta o reemplaza la evidencia de la incidencia, pendiente (S4-14). |
-| GET | `/api/v1/incidents/{id}/evidences/{evidenceId}/content` | Cualquiera autenticado | Descarga la evidencia binaria de la incidencia, pendiente (S4-14). |
+| POST | `/api/v1/incidents/{id}/evidences` | DRIVER | Adjunta o reemplaza la evidencia binaria de la incidencia reportada (US29, S4-14). |
+| GET | `/api/v1/incidents/{id}/evidences/{evidenceId}/content` | Cualquiera autenticado | Descarga autorizada de la evidencia binaria de la incidencia (US29, S4-14). |
 
 Antes de registrar un reporte, el servicio consulta a Trip el viaje y a Fleet el conductor del usuario. El reporte solo se acepta si el viaje existe en la empresa, el usuario es el conductor asignado y el viaje está en `IN_ROUTE`.
 
