@@ -12,15 +12,27 @@ import org.junit.jupiter.api.Test;
 class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
 
   @Test
-  void expensesTrayReturns501ForManagersAnd403ForDriversAndIsInOpenApi() throws Exception {
+  void expensesTrayReturns200ForManagersAnd403ForDriversAndIsInOpenApi() throws Exception {
     UUID tenantId = UUID.randomUUID();
-    String managerToken = tokens.issue(UUID.randomUUID(), tenantId, "ADMINISTRATOR", "admin@rinde.pe");
+    String managerToken =
+        tokens.issue(UUID.randomUUID(), tenantId, "ADMINISTRATOR", "admin@rinde.pe");
+    String operationsToken =
+        tokens.issue(UUID.randomUUID(), tenantId, "OPERATIONS_MANAGER", "ops@rinde.pe");
     String driverToken = tokens.issue(UUID.randomUUID(), tenantId, "DRIVER", "driver@rinde.pe");
 
     mockMvc
         .perform(get("/api/v1/expenses").header("Authorization", "Bearer " + managerToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-12."));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items").isArray())
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.size").value(20))
+        .andExpect(jsonPath("$.totalItems").value(0))
+        .andExpect(jsonPath("$.totalPages").value(0));
+
+    mockMvc
+        .perform(get("/api/v1/expenses").header("Authorization", "Bearer " + operationsToken))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalItems").value(0));
 
     mockMvc
         .perform(get("/api/v1/expenses").header("Authorization", "Bearer " + driverToken))

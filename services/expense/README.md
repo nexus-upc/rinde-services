@@ -19,7 +19,7 @@ Puerto 8084. Swagger: http://localhost:8084/swagger-ui.html. Flyway crea el esqu
 |---|---|---|
 | POST | `/api/v1/trips/{tripId}/expenses` | Registro del gasto por el conductor, idempotente por `idempotencyKey` (US21). Nace en `PENDING_SUPPORT`. |
 | GET | `/api/v1/trips/{tripId}/expenses` | Gastos de un viaje (US23). |
-| GET | `/api/v1/expenses` | Bandeja global de gastos con filtros y paginación, pendiente (S4-12). |
+| GET | `/api/v1/expenses` | Bandeja global de gastos con filtros y paginación (US23, US24). |
 | GET | `/api/v1/expenses/{id}` | Detalle del gasto con los metadatos de su comprobante. |
 | PATCH | `/api/v1/expenses/{id}/status` | Aprobación u observación con motivo, por ADMINISTRATOR u OPERATIONS_MANAGER (US24). |
 | POST | `/api/v1/expenses/sync` | Lote de gastos registrados sin conexión; informa los rechazados (US22). |

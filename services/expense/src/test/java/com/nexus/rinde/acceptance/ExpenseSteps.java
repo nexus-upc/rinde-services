@@ -371,6 +371,99 @@ public class ExpenseSteps {
     assertThat(context.statusCode()).isEqualTo(200);
   }
 
+  @Dado(
+      "que el conductor {string} registró el gasto {string} de tipo {string} por el monto {string}"
+          + " en fecha {string} sin evidencia y clave {string} en el viaje {string}")
+  public void namedDriverRegistersDatedExpense(
+      String email,
+      String expenseName,
+      String category,
+      String amount,
+      String date,
+      String idempotencyKey,
+      String tripName)
+      throws Exception {
+    registerExpense(
+        context.accessTokenOf(email),
+        context.tripIdOf(tripName),
+        category,
+        amount,
+        date,
+        idempotencyKey);
+    assertThat(context.statusCode()).isEqualTo(201);
+    rememberLastExpense(expenseName);
+  }
+
+  @Cuando("el usuario {string} consulta la bandeja de gastos con estado {string}")
+  public void userQueriesInboxByStatus(String email, String status) throws Exception {
+    Map<String, String> params = new LinkedHashMap<>();
+    if (!status.isBlank()) {
+      params.put("status", status);
+    }
+    context.record(api.listInbox(context.accessTokenOf(email), params));
+  }
+
+  @Cuando(
+      "el usuario {string} consulta la bandeja de gastos del viaje {string} del conductor {string}"
+          + " desde {string} hasta {string}")
+  public void userQueriesInboxWithFilters(
+      String email, String tripName, String driverEmail, String from, String to) throws Exception {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("tripId", context.tripIdOf(tripName));
+    params.put("driverId", context.userIdOf(driverEmail).toString());
+    params.put("from", RelativeDates.resolve(from));
+    params.put("to", RelativeDates.resolve(to));
+    context.record(api.listInbox(context.accessTokenOf(email), params));
+  }
+
+  @Cuando(
+      "el usuario {string} consulta la bandeja de gastos en la página {int} con tamaño {int}")
+  public void userQueriesInboxPage(String email, int page, int size) throws Exception {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("page", Integer.toString(page));
+    params.put("size", Integer.toString(size));
+    context.record(api.listInbox(context.accessTokenOf(email), params));
+  }
+
+  @Cuando("el usuario {string} consulta la bandeja de gastos con el parámetro {string} en {string}")
+  public void userQueriesInboxSingleParam(String email, String param, String value)
+      throws Exception {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put(param, RelativeDates.resolve(value));
+    context.record(api.listInbox(context.accessTokenOf(email), params));
+  }
+
+  @Cuando(
+      "el usuario {string} consulta la bandeja de gastos desde {string} hasta {string}")
+  public void userQueriesInboxByDateRange(String email, String from, String to) throws Exception {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("from", RelativeDates.resolve(from));
+    params.put("to", RelativeDates.resolve(to));
+    context.record(api.listInbox(context.accessTokenOf(email), params));
+  }
+
+  @Y("la página de gastos contiene {int} elementos de un total de {int} en {int} páginas")
+  public void expensePageHasTotals(int expectedSize, int totalItems, int totalPages)
+      throws Exception {
+    JsonNode body = context.body();
+    assertThat(body.get("items").size()).isEqualTo(expectedSize);
+    assertThat(body.get("totalItems").asLong()).isEqualTo(totalItems);
+    assertThat(body.get("totalPages").asInt()).isEqualTo(totalPages);
+  }
+
+  @Y("el elemento {int} de la bandeja corresponde al gasto {string}")
+  public void inboxItemMatchesExpense(int index, String expenseName) throws Exception {
+    String actualId = context.body().get("items").get(index).get("id").asText();
+    assertThat(actualId).isEqualTo(context.expenseIdOf(expenseName));
+  }
+
+  @Y("el elemento {int} de la bandeja tiene el comprobante {string}")
+  public void inboxItemHasEvidenceFileName(int index, String expectedFileName) throws Exception {
+    JsonNode evidence = context.body().get("items").get(index).get("evidence");
+    assertThat(evidence).isNotNull();
+    assertThat(evidence.get("fileName").asText()).isEqualTo(expectedFileName);
+  }
+
   @Cuando("el conductor sincroniza un lote con un gasto para el viaje {string} y otro para un viaje que"
       + " no existe")
   public void driverSyncsBatchWithUnknownTrip(String tripName) throws Exception {
