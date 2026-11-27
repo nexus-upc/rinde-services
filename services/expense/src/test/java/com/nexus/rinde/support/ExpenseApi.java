@@ -56,6 +56,19 @@ public class ExpenseApi {
     return mockMvc.perform(authorized(get("/api/v1/trips/" + tripId + "/expenses"), token));
   }
 
+  /** Consulta la bandeja global de gastos con los parámetros opcionales indicados. */
+  public ResultActions listInbox(String token, Map<String, String> params) throws Exception {
+    MockHttpServletRequestBuilder request = get("/api/v1/expenses");
+    if (params != null) {
+      for (Map.Entry<String, String> entry : params.entrySet()) {
+        if (entry.getValue() != null) {
+          request.param(entry.getKey(), entry.getValue());
+        }
+      }
+    }
+    return mockMvc.perform(authorized(request, token));
+  }
+
   public ResultActions updateStatus(String token, String expenseId, String status, String reason)
       throws Exception {
     Map<String, Object> body = new LinkedHashMap<>();
