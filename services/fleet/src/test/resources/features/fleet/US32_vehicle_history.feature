@@ -15,6 +15,7 @@ Característica: US32 Ficha e historial consolidado del vehículo
     Y que Incident responde la incidencia "BREAKDOWN" para el vehículo "camion" en fecha "HOY-2"
     Cuando el administrador consulta el historial del vehículo "camion"
     Entonces la respuesta tiene código 200
+    Y la próxima fecha de mantenimiento en el historial es "HOY+60"
     Y el historial tiene 3 eventos ordenados de más reciente a más antiguo
     Y el historial no está marcado como parcial
 
@@ -31,6 +32,11 @@ Característica: US32 Ficha e historial consolidado del vehículo
     Cuando el administrador consulta el historial del vehículo "camion" desde "HOY-1" hasta "HOY-10"
     Entonces la respuesta tiene código 400
     Y el mensaje de error es "La fecha final no puede ser anterior a la inicial."
+
+  Escenario: Rechazar consulta de historial con fecha de inicio con formato inválido
+    Cuando el administrador consulta el historial del vehículo "camion" desde "26-11-2026" hasta "HOY"
+    Entonces la respuesta tiene código 400
+    Y el mensaje de error es "La fecha de inicio debe tener el formato AAAA-MM-DD."
 
   Escenario: Un usuario de otra empresa no puede consultar el historial de una unidad ajena
     Dado que existe una empresa verificada con RUC "20987654321" y administrador "otro@otra.pe"

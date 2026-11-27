@@ -585,6 +585,12 @@ public class FleetSteps {
             context.accessTokenOf(email), context.vehicleIdOf(vehicleName), null, null));
   }
 
+  @Y("la próxima fecha de mantenimiento en el historial es {string}")
+  public void historyNextMaintenanceDateIs(String dateToken) throws Exception {
+    assertThat(context.body().get("nextMaintenanceDate").asText())
+        .isEqualTo(RelativeDates.resolve(dateToken));
+  }
+
   @Y("el historial tiene {int} eventos ordenados de más reciente a más antiguo")
   public void historyHasOrderedItems(int count) throws Exception {
     JsonNode items = context.body().get("items");
