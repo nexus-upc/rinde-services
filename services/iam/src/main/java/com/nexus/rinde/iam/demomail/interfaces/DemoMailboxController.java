@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/platform/demo-mailbox/messages")
 @PreAuthorize("hasAuthority('ROLE_PLATFORM_OWNER')")
 @ConditionalOnProperty(name = "rinde.demo.mailbox.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "rinde.mail.provider", havingValue = "demo", matchIfMissing = true)
 @Tag(name = "Platform mailbox", description = "Buzón de demostración del dueño de Rinde: verificación, invitación y recuperación")
 public class DemoMailboxController {
   private final DemoMailboxService mailbox;

@@ -18,6 +18,10 @@ import org.springframework.stereotype.Component;
     name = "rinde.demo.mailbox.enabled",
     havingValue = "false",
     matchIfMissing = true)
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "rinde.mail.provider",
+    havingValue = "demo",
+    matchIfMissing = true)
 public class AccessTokenLoggingEventHandler {
 
   private static final Logger log = LoggerFactory.getLogger(AccessTokenLoggingEventHandler.class);

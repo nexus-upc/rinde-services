@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 /** Protege los tokens de demostración con una clave distinta de las firmas JWT. */
 @Component
 @ConditionalOnProperty(name = "rinde.demo.mailbox.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "rinde.mail.provider", havingValue = "demo", matchIfMissing = true)
 public class DemoMailCipher {
   private final SecretKeySpec key;
   private final SecureRandom random = new SecureRandom();

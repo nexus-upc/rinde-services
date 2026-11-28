@@ -6,11 +6,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 
-/** Configuración del proveedor de correos transaccionales de IAM. */
+/** Configuración del proveedor de correos transaccionales de IAM: demo o azure. */
 @ConfigurationProperties(prefix = "rinde.mail")
 public class MailProperties {
 
-  private String provider = "demo";
+  static final String DEMO = "demo";
+  static final String AZURE = "azure";
+  private static final Profiles PRODUCTION = Profiles.of("prod", "production");
+
+  private String provider = DEMO;
   private String acsConnectionString = "";
   private String sender = "";
   private Environment environment;
@@ -20,21 +24,24 @@ public class MailProperties {
     this.environment = environment;
   }
 
+  /** Valida el proveedor al arrancar; con azure exige la cadena de conexión y el remitente. */
   @PostConstruct
   void validate() {
-    String normalized = provider == null ? "demo" : provider.trim();
-    if (environment != null
-        && environment.acceptsProfiles(Profiles.of("prod", "production"))
-        && !"azure".equals(normalized)) {
+    String selected = provider == null ? DEMO : provider;
+    if (environment != null && environment.acceptsProfiles(PRODUCTION) && !AZURE.equals(selected)) {
       throw new IllegalStateException("En producción el correo debe usar el proveedor azure.");
     }
-    if ("azure".equals(normalized)) {
+    if (!DEMO.equals(selected) && !AZURE.equals(selected)) {
+      throw new IllegalStateException("Proveedor de correo no válido: " + selected);
+    }
+    if (AZURE.equals(selected) && (isBlank(acsConnectionString) || isBlank(sender))) {
       throw new IllegalStateException(
-          "El proveedor de correo azure está pendiente de implementar en S4-27.");
+          "Con el proveedor azure se requieren RINDE_ACS_CONNECTION_STRING y RINDE_MAIL_SENDER.");
     }
-    if (!"demo".equals(normalized)) {
-      throw new IllegalStateException("Proveedor de correo no válido: " + normalized);
-    }
+  }
+
+  private static boolean isBlank(String value) {
+    return value == null || value.isBlank();
   }
 
   public String getProvider() {
@@ -59,5 +66,11 @@ public class MailProperties {
 
   public void setSender(String sender) {
     this.sender = sender;
+  }
+
+  /** Nunca muestra la cadena de conexión: solo el proveedor elegido. */
+  @Override
+  public String toString() {
+    return "MailProperties[provider=" + provider + ", acsConnectionString=****]";
   }
 }

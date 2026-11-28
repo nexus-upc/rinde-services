@@ -13,8 +13,11 @@ import org.springframework.web.bind.annotation.*;
 public class DemoFeaturesController {
   private final boolean enabled;
 
-  public DemoFeaturesController(@Value("${rinde.demo.mailbox.enabled:false}") boolean enabled) {
-    this.enabled = enabled;
+  /** Con el proveedor azure el buzón no existe, aunque la propiedad del buzón siga activa. */
+  public DemoFeaturesController(
+      @Value("${rinde.demo.mailbox.enabled:false}") boolean enabled,
+      @Value("${rinde.mail.provider:demo}") String mailProvider) {
+    this.enabled = enabled && "demo".equals(mailProvider == null ? "demo" : mailProvider.trim());
   }
 
   @Operation(summary = "Consultar si el buzón de demostración está habilitado")
