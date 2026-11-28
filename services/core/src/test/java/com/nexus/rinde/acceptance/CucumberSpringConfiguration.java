@@ -1,7 +1,6 @@
 package com.nexus.rinde.acceptance;
 
 import com.nexus.rinde.notification.domain.services.PushAdapter;
-import com.nexus.rinde.subscription.platform.infrastructure.PlatformCompanyDirectory;
 import com.nexus.rinde.support.AbstractIntegrationTest;
 import io.cucumber.spring.CucumberContextConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,9 +20,6 @@ public class CucumberSpringConfiguration extends AbstractIntegrationTest {
 
   /** Firma de prueba del panel del dueño; no es la de ningún entorno. */
   public static final String PLATFORM_SECRET = "acceptance-platform-signing-secret-1234567890";
-
-  /** El directorio de empresas vive en IAM; los pasos de US44 le indican los nombres. */
-  @MockitoBean PlatformCompanyDirectory platformCompanyDirectory;
 
   /** Doble de proveedor push para verificar entrega exitosa y fallos transitorios en US36. */
   @MockitoBean PushAdapter pushAdapter;
