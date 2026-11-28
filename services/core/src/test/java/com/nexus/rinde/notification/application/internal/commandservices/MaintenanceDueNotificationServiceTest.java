@@ -12,7 +12,9 @@ import com.nexus.rinde.iam.interfaces.acl.IamContextFacade;
 import com.nexus.rinde.notification.domain.model.valueobjects.EmailMessage;
 import com.nexus.rinde.notification.domain.model.valueobjects.RetryPolicy;
 import com.nexus.rinde.notification.domain.services.EmailAdapter;
+import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.CompanyNotificationEntity;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.entities.EmailOutboxEntry;
+import com.nexus.rinde.notification.infrastructure.persistence.jpa.repositories.CompanyNotificationRepository;
 import com.nexus.rinde.notification.infrastructure.persistence.jpa.repositories.EmailOutboxRepository;
 import java.time.Clock;
 import java.time.Duration;
@@ -25,8 +27,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.PlatformTransactionManager;
 
-/** Prueba que un mantenimiento genera un solo correo al administrador por evento. */
+/** Prueba que un mantenimiento genera un solo correo y un solo aviso de empresa por evento. */
 class MaintenanceDueNotificationServiceTest {
 
   private static final Instant T0 = Instant.parse("2026-10-08T06:00:00Z");
@@ -37,6 +40,8 @@ class MaintenanceDueNotificationServiceTest {
   private final IamContextFacade iamContextFacade = mock(IamContextFacade.class);
   private final EmailOutboxRepository emailOutboxRepository = mock(EmailOutboxRepository.class);
   private final EmailAdapter emailAdapter = mock(EmailAdapter.class);
+  private final CompanyNotificationRepository companyNotifications =
+      mock(CompanyNotificationRepository.class);
   private MaintenanceDueNotificationService service;
 
   @BeforeEach
@@ -52,7 +57,10 @@ class MaintenanceDueNotificationServiceTest {
             emailAdapter,
             POLICY,
             Clock.fixed(T0, ZoneOffset.UTC));
-    service = new MaintenanceDueNotificationService(outbox);
+    CompanyNotificationRecorder recorder =
+        new CompanyNotificationRecorder(
+            companyNotifications, mock(PlatformTransactionManager.class));
+    service = new MaintenanceDueNotificationService(outbox, recorder);
   }
 
   @Test
@@ -82,6 +90,28 @@ class MaintenanceDueNotificationServiceTest {
     verify(emailAdapter, times(1)).send(sent.capture());
     assertThat(sent.getValue().subject()).contains("ABC-123").contains("vencido");
     assertThat(sent.getValue().body()).contains("vencido");
+  }
+
+  @Test
+  void createsOneCompanyNoticeForTheSameEventId() {
+    UUID eventId = UUID.randomUUID();
+    when(emailOutboxRepository.existsById(eventId)).thenReturn(false, true);
+    when(companyNotifications.existsByEventId(eventId)).thenReturn(false, true);
+
+    MaintenanceDue event = dueEvent(eventId, "OVERDUE");
+    service.handle(event);
+    service.handle(event);
+
+    ArgumentCaptor<CompanyNotificationEntity> saved =
+        ArgumentCaptor.forClass(CompanyNotificationEntity.class);
+    verify(companyNotifications, times(1)).saveAndFlush(saved.capture());
+    CompanyNotificationEntity notice = saved.getValue();
+    assertThat(notice.getEventId()).isEqualTo(eventId);
+    assertThat(notice.getTenantId()).isEqualTo(tenantId);
+    assertThat(notice.getType()).isEqualTo("MAINTENANCE_DUE");
+    assertThat(notice.getTitle()).isEqualTo("Mantenimiento vencido");
+    assertThat(notice.getLink()).startsWith("/fleet?vehicleId=");
+    assertThat(notice.getCreatedAt()).isEqualTo(T0);
   }
 
   private MaintenanceDue dueEvent(UUID eventId, String state) {

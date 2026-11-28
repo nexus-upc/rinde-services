@@ -59,6 +59,9 @@ rinde:
     exchange: ${RINDE_EVENTS_EXCHANGE:rinde.events}
     notification:
       queue: ${RINDE_NOTIFICATION_QUEUE:notification.trip-assigned}
+      expense-queue: ${RINDE_NOTIFICATION_EXPENSE_QUEUE:notification.expense-registered}
+      incident-queue: ${RINDE_NOTIFICATION_INCIDENT_QUEUE:notification.incident-reported}
+      trip-finished-queue: ${RINDE_NOTIFICATION_TRIP_FINISHED_QUEUE:notification.trip-finished}
     subscription:
       queue: ${RINDE_IAM_SUBSCRIPTION_QUEUE:iam.subscription-events}
   security:

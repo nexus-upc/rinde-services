@@ -59,6 +59,104 @@ public class RabbitMessagingConfiguration {
     return BindingBuilder.bind(queue).to(notificationDeadExchange).with(name);
   }
 
+  // Gastos registrados: cola, cola de errores y bindings propios.
+
+  @Bean
+  public Queue notificationExpenseRegisteredQueue(
+      @Value("${rinde.messaging.notification.expense-queue:notification.expense-registered}")
+          String name) {
+    return QueueBuilder.durable(name)
+        .deadLetterExchange(DEAD_EXCHANGE).deadLetterRoutingKey(name).build();
+  }
+
+  @Bean
+  public Queue notificationExpenseRegisteredDeadQueue(
+      @Value("${rinde.messaging.notification.expense-queue:notification.expense-registered}")
+          String name) {
+    return QueueBuilder.durable(name + ".dead").build();
+  }
+
+  @Bean
+  public Binding notificationExpenseRegisteredBinding(
+      @Qualifier("notificationExpenseRegisteredQueue") Queue queue,
+      TopicExchange rindeEventsExchange) {
+    return BindingBuilder.bind(queue).to(rindeEventsExchange).with("expense.registered");
+  }
+
+  @Bean
+  public Binding notificationExpenseRegisteredDeadBinding(
+      @Qualifier("notificationExpenseRegisteredDeadQueue") Queue queue,
+      DirectExchange notificationDeadExchange,
+      @Value("${rinde.messaging.notification.expense-queue:notification.expense-registered}")
+          String name) {
+    return BindingBuilder.bind(queue).to(notificationDeadExchange).with(name);
+  }
+
+  // Incidencias reportadas: cola, cola de errores y bindings propios.
+
+  @Bean
+  public Queue notificationIncidentReportedQueue(
+      @Value("${rinde.messaging.notification.incident-queue:notification.incident-reported}")
+          String name) {
+    return QueueBuilder.durable(name)
+        .deadLetterExchange(DEAD_EXCHANGE).deadLetterRoutingKey(name).build();
+  }
+
+  @Bean
+  public Queue notificationIncidentReportedDeadQueue(
+      @Value("${rinde.messaging.notification.incident-queue:notification.incident-reported}")
+          String name) {
+    return QueueBuilder.durable(name + ".dead").build();
+  }
+
+  @Bean
+  public Binding notificationIncidentReportedBinding(
+      @Qualifier("notificationIncidentReportedQueue") Queue queue,
+      TopicExchange rindeEventsExchange) {
+    return BindingBuilder.bind(queue).to(rindeEventsExchange).with("incident.reported");
+  }
+
+  @Bean
+  public Binding notificationIncidentReportedDeadBinding(
+      @Qualifier("notificationIncidentReportedDeadQueue") Queue queue,
+      DirectExchange notificationDeadExchange,
+      @Value("${rinde.messaging.notification.incident-queue:notification.incident-reported}")
+          String name) {
+    return BindingBuilder.bind(queue).to(notificationDeadExchange).with(name);
+  }
+
+  // Viajes finalizados: cola, cola de errores y bindings propios.
+
+  @Bean
+  public Queue notificationTripFinishedQueue(
+      @Value("${rinde.messaging.notification.trip-finished-queue:notification.trip-finished}")
+          String name) {
+    return QueueBuilder.durable(name)
+        .deadLetterExchange(DEAD_EXCHANGE).deadLetterRoutingKey(name).build();
+  }
+
+  @Bean
+  public Queue notificationTripFinishedDeadQueue(
+      @Value("${rinde.messaging.notification.trip-finished-queue:notification.trip-finished}")
+          String name) {
+    return QueueBuilder.durable(name + ".dead").build();
+  }
+
+  @Bean
+  public Binding notificationTripFinishedBinding(
+      @Qualifier("notificationTripFinishedQueue") Queue queue, TopicExchange rindeEventsExchange) {
+    return BindingBuilder.bind(queue).to(rindeEventsExchange).with("trip.finished");
+  }
+
+  @Bean
+  public Binding notificationTripFinishedDeadBinding(
+      @Qualifier("notificationTripFinishedDeadQueue") Queue queue,
+      DirectExchange notificationDeadExchange,
+      @Value("${rinde.messaging.notification.trip-finished-queue:notification.trip-finished}")
+          String name) {
+    return BindingBuilder.bind(queue).to(notificationDeadExchange).with(name);
+  }
+
   @Bean
   public MessageConverter jsonMessageConverter(ObjectMapper mapper) {
     var converter = new Jackson2JsonMessageConverter(mapper);

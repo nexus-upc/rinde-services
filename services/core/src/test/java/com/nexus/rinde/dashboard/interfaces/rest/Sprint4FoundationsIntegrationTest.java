@@ -16,7 +16,7 @@ import org.springframework.http.MediaType;
 class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
 
   @Test
-  void dashboardChartsAndNotificationEndpointsReturn501AndEnforceRoles() throws Exception {
+  void dashboardChartsReturn501AndNotificationCenterAnswersAndEnforcesRoles() throws Exception {
     UUID tenantId = UUID.randomUUID();
     String adminToken = tokens.issue(UUID.randomUUID(), tenantId, "ADMINISTRATOR", "admin@rinde.pe");
     String driverToken = tokens.issue(UUID.randomUUID(), tenantId, "DRIVER", "driver@rinde.pe");
@@ -31,19 +31,20 @@ class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
         .perform(get("/api/v1/dashboard/charts").header("Authorization", "Bearer " + driverToken))
         .andExpect(status().isForbidden());
 
-    // C6: Company notification center
+    // C6: centro de notificaciones implementado en S4-25
     mockMvc
         .perform(get("/api/v1/notifications").header("Authorization", "Bearer " + adminToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-25."));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items").isArray())
+        .andExpect(jsonPath("$.totalItems").value(0));
     mockMvc
         .perform(
             get("/api/v1/notifications")
                 .param("type", "INCIDENT_REPORTED,EXPENSE_PENDING_REVIEW")
                 .param("unreadOnly", "true")
                 .header("Authorization", "Bearer " + adminToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-25."));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items").isArray());
     mockMvc
         .perform(
             get("/api/v1/notifications")
@@ -60,8 +61,8 @@ class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
         .perform(
             get("/api/v1/notifications/unread-count")
                 .header("Authorization", "Bearer " + adminToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-25."));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.count").value(0));
     mockMvc
         .perform(
             get("/api/v1/notifications/unread-count")
@@ -72,8 +73,8 @@ class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
         .perform(
             patch("/api/v1/notifications/{id}/read", notificationId)
                 .header("Authorization", "Bearer " + adminToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-25."));
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.detail").value("La notificación no existe."));
     mockMvc
         .perform(
             patch("/api/v1/notifications/{id}/read", notificationId)
@@ -83,8 +84,7 @@ class Sprint4FoundationsIntegrationTest extends AbstractIntegrationTest {
     mockMvc
         .perform(
             post("/api/v1/notifications/read-all").header("Authorization", "Bearer " + adminToken))
-        .andExpect(status().isNotImplemented())
-        .andExpect(jsonPath("$.detail").value("Funcionalidad pendiente de implementar en S4-25."));
+        .andExpect(status().isNoContent());
     mockMvc
         .perform(
             post("/api/v1/notifications/read-all")
