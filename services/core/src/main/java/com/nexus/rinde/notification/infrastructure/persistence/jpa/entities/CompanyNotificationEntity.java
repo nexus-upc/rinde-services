@@ -39,6 +39,38 @@ public class CompanyNotificationEntity {
 
   protected CompanyNotificationEntity() {}
 
+  private CompanyNotificationEntity(
+      UUID id,
+      UUID eventId,
+      UUID tenantId,
+      String type,
+      String title,
+      String message,
+      String link,
+      Instant createdAt) {
+    this.id = id;
+    this.eventId = eventId;
+    this.tenantId = tenantId;
+    this.type = type;
+    this.title = title;
+    this.message = message;
+    this.link = link;
+    this.createdAt = createdAt;
+  }
+
+  /** Crea el aviso de empresa que deja un evento ya validado; el id lo asigna la aplicación. */
+  public static CompanyNotificationEntity create(
+      UUID eventId,
+      UUID tenantId,
+      String type,
+      String title,
+      String message,
+      String link,
+      Instant createdAt) {
+    return new CompanyNotificationEntity(
+        UUID.randomUUID(), eventId, tenantId, type, title, message, link, createdAt);
+  }
+
   public UUID getId() {
     return id;
   }
