@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.*;
 /** Guarda el correo en la misma transacción que crea el enlace de acceso. */
 @Service
 @ConditionalOnProperty(name = "rinde.demo.mailbox.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "rinde.mail.provider", havingValue = "demo", matchIfMissing = true)
 public class DemoMailCapture {
   private final DemoMailRepository messages;
   private final DemoMailCipher cipher;

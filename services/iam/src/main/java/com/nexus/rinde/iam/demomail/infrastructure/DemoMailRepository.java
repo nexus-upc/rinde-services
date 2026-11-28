@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 @ConditionalOnProperty(name = "rinde.demo.mailbox.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "rinde.mail.provider", havingValue = "demo", matchIfMissing = true)
 public class DemoMailRepository {
   private final JdbcTemplate jdbc;
   private static final String SELECT =

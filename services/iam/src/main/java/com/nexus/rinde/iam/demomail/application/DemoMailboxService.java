@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @ConditionalOnProperty(name = "rinde.demo.mailbox.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "rinde.mail.provider", havingValue = "demo", matchIfMissing = true)
 public class DemoMailboxService {
   private final DemoMailRepository messages;
   private final DemoMailCipher cipher;
