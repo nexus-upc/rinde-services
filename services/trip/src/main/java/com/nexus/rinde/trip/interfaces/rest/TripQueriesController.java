@@ -1,13 +1,16 @@
 package com.nexus.rinde.trip.interfaces.rest;
 
 import com.nexus.rinde.trip.domain.model.aggregates.Trip;
+import com.nexus.rinde.trip.domain.model.queries.GetLatestTripLocationsQuery;
 import com.nexus.rinde.trip.domain.model.queries.GetTripByIdQuery;
 import com.nexus.rinde.trip.domain.model.queries.GetTripsAssignedToMeQuery;
 import com.nexus.rinde.trip.domain.model.queries.GetTripsByTenantQuery;
 import com.nexus.rinde.trip.domain.services.TripQueryService;
 import com.nexus.rinde.trip.domain.model.valueobjects.TripStatus;
+import com.nexus.rinde.trip.interfaces.rest.resources.LatestTripLocationResource;
 import com.nexus.rinde.trip.interfaces.rest.resources.TripDetailResource;
 import com.nexus.rinde.trip.interfaces.rest.resources.TripSummaryResource;
+import com.nexus.rinde.trip.interfaces.rest.transform.TripLocationResourceFromEntityAssembler;
 import com.nexus.rinde.trip.interfaces.rest.transform.TripResourceFromEntityAssembler;
 import com.nexus.rinde.trip.interfaces.rest.transform.TripStatusFilterFromParameterAssembler;
 import com.nexus.rinde.shared.infrastructure.security.TenantContext;
@@ -131,6 +134,22 @@ public class TripQueriesController {
         .handle(new GetTripsAssignedToMeQuery(TenantContext.tenantId(), TenantContext.userId()))
         .stream()
         .map(TripResourceFromEntityAssembler::toSummaryResource)
+        .toList();
+  }
+
+  @GetMapping("/locations/latest")
+  @PreAuthorize("hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')")
+  @Operation(
+      summary = "Consultar la última ubicación de los viajes en ruta",
+      description =
+          "Devuelve el último punto registrado de cada viaje IN_ROUTE de la empresa. Un viaje en"
+              + " ruta sin puntos registrados aparece con ubicación null.")
+  @ApiResponse(responseCode = "200", description = "Últimas ubicaciones de viajes en ruta")
+  public List<LatestTripLocationResource> latestLocations() {
+    return tripQueryService
+        .handle(new GetLatestTripLocationsQuery(TenantContext.tenantId()))
+        .stream()
+        .map(TripLocationResourceFromEntityAssembler::toLatestResource)
         .toList();
   }
 }

@@ -94,6 +94,15 @@ public class TripApi {
     return mockMvc.perform(authorized(post("/api/v1/trips/" + tripId + "/finish"), token));
   }
 
+  public ResultActions recordLocations(String token, String tripId, Object body)
+      throws Exception {
+    return perform(post("/api/v1/trips/" + tripId + "/locations"), token, body);
+  }
+
+  public ResultActions latestLocations(String token) throws Exception {
+    return mockMvc.perform(authorized(get("/api/v1/trips/locations/latest"), token));
+  }
+
   private ResultActions perform(
       MockHttpServletRequestBuilder request, String token, Object body) throws Exception {
     return mockMvc.perform(

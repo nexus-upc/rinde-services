@@ -102,7 +102,7 @@ El archivo `gateway/src/main/resources/application.yml` evalúa las rutas por su
 | `/api/v1/incidents/**`, `/api/v1/trips/*/incidents` | `incident-service` | 6 | `incident` (`INCIDENT_SERVICE_URL`) | Sí (empresa) | C4, C10 |
 | `/api/v1/tenants/**`, `/api/v1/users/**` | `iam-service` | 1 | `iam` (`IAM_SERVICE_URL`) | Sí en `/tenants/current` y `/users/**` | C7 |
 | `/api/v1/trips/*/settlement/**`, `/api/v1/trips/*/advances` | `monolith-trip-children` | 5 | `core` (`MONOLITH_URL`) | Sí (empresa) | C10 |
-| `/api/v1/trips/**` | `trip-service` | 8 | `trip` (`TRIP_SERVICE_URL`) | Sí (empresa) | C10 |
+| `/api/v1/trips/**` | `trip-service` | 8 | `trip` (`TRIP_SERVICE_URL`) | Sí (empresa) | C10, C11 |
 | `/api/internal/**` | `internal-denied` | 4 | Ninguno (404 por `PathGuardGlobalFilter`) | No aplica | Todos |
 
 Confirmación explícita de precedencia en el gateway: ninguna entrada con `order` de `0` a `11` captura `/api/v1/notifications/**` ni `/api/v1/dashboard/**`, por lo que ambas caen en `monolith-service` (`order: 12`) sin requerir cambios en el gateway mientras permanezcan en `core`. Asimismo, `AnonymousRequestMatcher` solo permite sin token `POST /api/v1/tenants` y `POST /api/v1/tenants/*/verification`, de modo que `GET /api/v1/tenants/current`, `PATCH /api/v1/tenants/current`, `PATCH /api/v1/users/me` y `POST /api/v1/users/me/password` quedan protegidos con JWT de empresa por el gateway.
@@ -957,6 +957,94 @@ Los tres correos corresponden a los eventos publicados por `Tenant` y `User`, co
 
 ---
 
+### C11. Ubicación del camión en ruta
+
+- **Responsable y tarea:** Pedro (`S4-33`).
+- **Servicio y controladores:** `trip` (`TripsController` para escritura y `TripQueriesController` para consulta).
+- **Entrada en gateway:** `trip-service` (`order: 8`, `Path=/api/v1/trips/**`).
+- **Confirmación de rutas y no colisión:** tanto `POST /api/v1/trips/{id}/locations` como `GET /api/v1/trips/locations/latest` quedan cubiertos por `/api/v1/trips/**` sin modificar `gateway/src/main/resources/application.yml`. Ninguna entrada con `order` menor (`monolith-trip-children` en `order: 5`, `expense-service` en `order: 6` e `incident-service` en `order: 6`) captura `/locations` ni `/locations/latest`. En `TripQueriesController`, `GET /api/v1/trips/locations/latest` no colisiona con `GET /api/v1/trips/{id}` porque Spring MVC prioriza la coincidencia literal sobre la variable de ruta y `{id}` exige formato `UUID`.
+
+#### 1. Registrar ubicaciones del viaje en ruta
+
+- **Ruta y método:** `POST /api/v1/trips/{id}/locations`.
+- **Roles (`@PreAuthorize`):** `hasRole('DRIVER')`.
+- **Cuerpo de petición (`RecordTripLocationsResource`):** lista de 1 a 50 puntos enviados desde la cola del conductor.
+
+```json
+{
+  "points": [
+    {
+      "latitude": -12.046374,
+      "longitude": -77.042793,
+      "accuracyMeters": 12.50,
+      "recordedAt": "2026-11-28T14:30:00Z"
+    }
+  ]
+}
+```
+
+- **Reglas de validación e idempotencia:**
+  - `points`: obligatorio, de 1 a 50 elementos no nulos.
+  - `latitude`: obligatorio, decimal entre `-90` y `90`. Se persiste redondeado a 6 decimales.
+  - `longitude`: obligatorio, decimal entre `-180` y `180`. Se persiste redondeado a 6 decimales.
+  - `accuracyMeters`: opcional (`nullable`), decimal mayor o igual a `0` cuando se envía. Se persiste redondeado a 2 decimales.
+  - `recordedAt`: obligatorio, instante ISO-8601 UTC de captura en el dispositivo (`Instant`). No puede superar en más de 5 minutos la hora del servidor (`"La hora del punto no puede estar en el futuro."`).
+  - Solo se aceptan puntos si el viaje está en estado `IN_ROUTE` y pertenece al conductor autenticado (verificado mediante `FleetAvailabilityService.findDriverIdByUser`).
+  - Un punto con el mismo `recordedAt` (precisión de microsegundos) para el mismo viaje no se guarda dos veces, tanto entre reenvíos de la cola (incluidos reenvíos concurrentes) como dentro del mismo lote.
+- **Respuesta (`202 Accepted`, `RecordTripLocationsResponseResource`):**
+
+```json
+{
+  "savedCount": 1,
+  "duplicateCount": 0
+}
+```
+
+- **Errores de negocio:**
+
+| Código | Mensaje (`detail`) | Causa |
+|---|---|---|
+| 400 | La solicitud tiene datos inválidos. | `points` vacío, mayor a 50, con elementos nulos, coordenadas o precisión fuera de rango, o `recordedAt` más de 5 minutos en el futuro (`"La hora del punto no puede estar en el futuro."`); `errors` detalla cada campo inválido |
+| 403 | No tiene permisos para realizar esta operación. | El rol del token no es `DRIVER` |
+| 404 | El viaje no existe. | El viaje no existe en la empresa del token o no está asignado al conductor autenticado |
+| 409 | Solo se registra la ubicación de un viaje en ruta. | El viaje asignado al conductor está en estado `ASSIGNED`, `FINISHED` o `SETTLED` |
+| 503 | El servicio de flota no está disponible en este momento. Intente nuevamente más tarde. | Fleet no responde al resolver el conductor del token |
+
+#### 2. Consultar la última ubicación de los viajes en ruta
+
+- **Ruta y método:** `GET /api/v1/trips/locations/latest`.
+- **Roles (`@PreAuthorize`):** `hasAnyRole('ADMINISTRATOR','OPERATIONS_MANAGER')`.
+- **Comportamiento:** devuelve la última ubicación registrada (mayor `recordedAt`) para cada viaje en estado `IN_ROUTE` de la empresa autenticada, ordenado por código de viaje (`code`) ascendente. Excluye viajes en estados `SCHEDULED`, `ASSIGNED`, `FINISHED` y `SETTLED`. Como `trip` almacena `vehicleId` y no guarda la placa del vehículo ni consulta a Fleet en esta lectura, la respuesta expone `vehicleId`. Un viaje `IN_ROUTE` sin puntos registrados aparece con `latitude`, `longitude`, `accuracyMeters` y `recordedAt` en `null`, para que la web muestre "Ubicación no compartida". No se calculan porcentaje de avance ni llegada estimada.
+- **Respuesta (`200 OK`, lista de `LatestTripLocationResource`):**
+
+```json
+[
+  {
+    "tripId": "7b0e4f52-1c9a-4f3e-8d21-5a6c9e0b3d44",
+    "code": "TRP-000014",
+    "vehicleId": "deac3d8e-12d4-4a72-98f2-1e2fc4d0d230",
+    "latitude": -12.046374,
+    "longitude": -77.042793,
+    "accuracyMeters": 12.50,
+    "recordedAt": "2026-11-28T14:30:00Z"
+  },
+  {
+    "tripId": "9a1f2c3d-4e5b-4a6c-8d7e-9f0a1b2c3d4e",
+    "code": "TRP-000015",
+    "vehicleId": "ab12cd34-56ef-4789-90ab-cdef12345678",
+    "latitude": null,
+    "longitude": null,
+    "accuracyMeters": null,
+    "recordedAt": null
+  }
+]
+```
+
+- **Errores de negocio:** `403` `"No tiene permisos para realizar esta operación."` cuando el rol no es `ADMINISTRATOR` ni `OPERATIONS_MANAGER`.
+- **Eventos:** ninguno.
+
+---
+
 ## 4. Qué deja listo la tarea de bases (S4-B)
 
 | Contrato / Tarea | Qué deja listo la tarea de bases (S4-B) | Qué implementa el responsable |
@@ -990,3 +1078,4 @@ Los tres correos corresponden a los eventos publicados por `Tenant` y `User`, co
 12. **Convivencia de `C1` con la separación de Settlement (`S4-02`):** `S4-B` prepara solo la fachada local actual; al separar Settlement en `S4-02`, Gabriel convierte `SettlementContextFacade` en cliente HTTP y agrega `SETTLEMENT` a `unavailableSources` si no responde.
 13. **Proveedor de correo (`C8`):** `demo` conserva el comportamiento actual (buzón si `rinde.demo.mailbox.enabled=true` o log si está en `false`); `azure` no instancia buzón ni log de enlaces; en perfiles `prod` o `production` se exige `rinde.mail.provider=azure` o el arranque falla con `"En producción el correo debe usar el proveedor azure."`.
 14. **Filtro por tipo de aviso en el centro de notificaciones (`C6`):** `GET /api/v1/notifications` admite el parámetro opcional `type` (uno o varios valores CSV entre `EXPENSE_PENDING_REVIEW`, `MAINTENANCE_DUE`, `INCIDENT_REPORTED` y `SETTLEMENT_READY`), combinable con `unreadOnly` y con rechazo `400` `"El parámetro type contiene un tipo de aviso inválido."`; `/unread-count` no cambia.
+15. **Ubicación del camión en ruta (`C11`):** `POST /api/v1/trips/{id}/locations` recibe un objeto `{ "points": [...] }` (1 a 50 puntos) para conservar el formato RFC 7807 con mapa `errors` por campo en `GlobalExceptionHandler`; deduplica por `(trip_id, recorded_at)` en microsegundos; `GET /api/v1/trips/locations/latest` devuelve `vehicleId` (ya que `trip` no almacena placas ni consulta Fleet en esta lectura) y campos de ubicación `null` para viajes `IN_ROUTE` sin puntos registrados.

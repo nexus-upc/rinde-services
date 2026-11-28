@@ -3,16 +3,22 @@ package com.nexus.rinde.trip.interfaces.rest;
 import com.nexus.rinde.trip.domain.model.aggregates.Trip;
 import com.nexus.rinde.trip.domain.model.commands.AssignTripCommand;
 import com.nexus.rinde.trip.domain.model.commands.FinishTripCommand;
+import com.nexus.rinde.trip.domain.model.commands.RecordTripLocationsCommand;
 import com.nexus.rinde.trip.domain.model.commands.ScheduleTripCommand;
 import com.nexus.rinde.trip.domain.model.commands.StartTripCommand;
 import com.nexus.rinde.trip.domain.services.TripCommandService;
 import com.nexus.rinde.trip.domain.services.TripAssignmentResult;
+import com.nexus.rinde.trip.domain.services.TripLocationBatchResult;
 import com.nexus.rinde.trip.interfaces.rest.resources.AssignTripResource;
+import com.nexus.rinde.trip.interfaces.rest.resources.RecordTripLocationsResource;
+import com.nexus.rinde.trip.interfaces.rest.resources.RecordTripLocationsResponseResource;
 import com.nexus.rinde.trip.interfaces.rest.resources.ScheduleTripResource;
 import com.nexus.rinde.trip.interfaces.rest.resources.TripAssignmentResponseResource;
 import com.nexus.rinde.trip.interfaces.rest.resources.TripDetailResource;
 import com.nexus.rinde.trip.interfaces.rest.transform.AssignTripCommandFromResourceAssembler;
+import com.nexus.rinde.trip.interfaces.rest.transform.RecordTripLocationsCommandFromResourceAssembler;
 import com.nexus.rinde.trip.interfaces.rest.transform.ScheduleTripCommandFromResourceAssembler;
+import com.nexus.rinde.trip.interfaces.rest.transform.TripLocationResourceFromEntityAssembler;
 import com.nexus.rinde.trip.interfaces.rest.transform.TripResourceFromEntityAssembler;
 import com.nexus.rinde.shared.infrastructure.security.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
@@ -194,5 +200,54 @@ public class TripsController {
         tripCommandService.handle(
             new FinishTripCommand(TenantContext.tenantId(), id, TenantContext.userId()));
     return TripResourceFromEntityAssembler.toDetailResource(trip);
+  }
+
+  @PostMapping("/{id}/locations")
+  @PreAuthorize("hasRole('DRIVER')")
+  @Operation(
+      summary = "Registrar ubicaciones del viaje en ruta",
+      description =
+          "Recibe de 1 a 50 puntos capturados por el conductor asignado mientras el viaje está en"
+              + " IN_ROUTE. Los puntos con recordedAt repetido para el mismo viaje se omiten sin"
+              + " duplicar.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "202", description = "Puntos procesados"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Lote o coordenadas inválidas",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "El viaje no existe en la empresa o no pertenece al conductor",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "409",
+        description = "El viaje no está en estado IN_ROUTE",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class))),
+    @ApiResponse(
+        responseCode = "503",
+        description = "Fleet no disponible para validar al conductor",
+        content =
+            @Content(
+                mediaType = "application/problem+json",
+                schema = @Schema(implementation = ProblemDetail.class)))
+  })
+  public ResponseEntity<RecordTripLocationsResponseResource> recordLocations(
+      @PathVariable UUID id, @Valid @RequestBody RecordTripLocationsResource resource) {
+    RecordTripLocationsCommand command =
+        RecordTripLocationsCommandFromResourceAssembler.toCommand(
+            TenantContext.tenantId(), id, TenantContext.userId(), resource);
+    TripLocationBatchResult result = tripCommandService.handle(command);
+    return ResponseEntity.accepted()
+        .body(TripLocationResourceFromEntityAssembler.toBatchResponse(result));
   }
 }
