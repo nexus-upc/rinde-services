@@ -3,6 +3,8 @@ package com.nexus.rinde.acceptance;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nexus.rinde.support.TestTokens;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -29,9 +31,14 @@ public class ScenarioContext {
   private final Map<String, String> tripIds = new HashMap<>();
   private final Map<String, String> vehicleIds = new HashMap<>();
   private final Map<String, String> driverIds = new HashMap<>();
+  private final Instant scenarioNow = Instant.now().truncatedTo(ChronoUnit.SECONDS);
   private MvcResult lastResult;
   private String currentAdministratorToken;
   private UUID currentTenantId;
+
+  public Instant scenarioNow() {
+    return scenarioNow;
+  }
 
   public ScenarioContext(ObjectMapper objectMapper, TestTokens tokens) {
     this.objectMapper = objectMapper;

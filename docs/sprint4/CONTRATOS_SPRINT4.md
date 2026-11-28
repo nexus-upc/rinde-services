@@ -988,9 +988,9 @@ Los tres correos corresponden a los eventos publicados por `Tenant` y `User`, co
   - `latitude`: obligatorio, decimal entre `-90` y `90`. Se persiste redondeado a 6 decimales.
   - `longitude`: obligatorio, decimal entre `-180` y `180`. Se persiste redondeado a 6 decimales.
   - `accuracyMeters`: opcional (`nullable`), decimal mayor o igual a `0` cuando se envía. Se persiste redondeado a 2 decimales.
-  - `recordedAt`: obligatorio, instante ISO-8601 UTC de captura en el dispositivo (`Instant`).
+  - `recordedAt`: obligatorio, instante ISO-8601 UTC de captura en el dispositivo (`Instant`). No puede superar en más de 5 minutos la hora del servidor (`"La hora del punto no puede estar en el futuro."`).
   - Solo se aceptan puntos si el viaje está en estado `IN_ROUTE` y pertenece al conductor autenticado (verificado mediante `FleetAvailabilityService.findDriverIdByUser`).
-  - Un punto con el mismo `recordedAt` (precisión de microsegundos) para el mismo viaje no se guarda dos veces, tanto entre reenvíos de la cola como dentro del mismo lote.
+  - Un punto con el mismo `recordedAt` (precisión de microsegundos) para el mismo viaje no se guarda dos veces, tanto entre reenvíos de la cola (incluidos reenvíos concurrentes) como dentro del mismo lote.
 - **Respuesta (`202 Accepted`, `RecordTripLocationsResponseResource`):**
 
 ```json
@@ -1004,7 +1004,7 @@ Los tres correos corresponden a los eventos publicados por `Tenant` y `User`, co
 
 | Código | Mensaje (`detail`) | Causa |
 |---|---|---|
-| 400 | La solicitud tiene datos inválidos. | `points` vacío, mayor a 50, con elementos nulos o campos fuera de rango (`errors` detalla cada campo inválido) |
+| 400 | La solicitud tiene datos inválidos. | `points` vacío, mayor a 50, con elementos nulos, coordenadas o precisión fuera de rango, o `recordedAt` más de 5 minutos en el futuro (`"La hora del punto no puede estar en el futuro."`); `errors` detalla cada campo inválido |
 | 403 | No tiene permisos para realizar esta operación. | El rol del token no es `DRIVER` |
 | 404 | El viaje no existe. | El viaje no existe en la empresa del token o no está asignado al conductor autenticado |
 | 409 | Solo se registra la ubicación de un viaje en ruta. | El viaje asignado al conductor está en estado `ASSIGNED`, `FINISHED` o `SETTLED` |

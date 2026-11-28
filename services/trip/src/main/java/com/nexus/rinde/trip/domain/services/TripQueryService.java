@@ -1,6 +1,7 @@
 package com.nexus.rinde.trip.domain.services;
 
 import com.nexus.rinde.trip.domain.model.aggregates.Trip;
+import com.nexus.rinde.trip.domain.model.queries.GetLatestTripLocationsQuery;
 import com.nexus.rinde.trip.domain.model.queries.GetTripByIdQuery;
 import com.nexus.rinde.trip.domain.model.queries.GetTripsAssignedToMeQuery;
 import com.nexus.rinde.trip.domain.model.queries.GetTripsByTenantQuery;
@@ -14,4 +15,6 @@ public interface TripQueryService {
   Trip handle(GetTripByIdQuery query);
 
   List<Trip> handle(GetTripsAssignedToMeQuery query);
+
+  List<LatestTripLocation> handle(GetLatestTripLocationsQuery query);
 }

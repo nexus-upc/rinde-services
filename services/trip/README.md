@@ -35,7 +35,7 @@ CREATE DATABASE rinde_trip;
 CREATE DATABASE rinde_trip_test;
 ```
 
-Al arrancar, Flyway crea el esquema `trip` y aplica las migraciones de `src/main/resources/db/migration/trip`: los viajes, el historial de estados y la tabla `processed_events` con los eventos ya procesados.
+Al arrancar, Flyway crea el esquema `trip` y aplica las migraciones de `src/main/resources/db/migration/trip`: los viajes, el historial de estados, las ubicaciones en ruta y la tabla `processed_events` con los eventos ya procesados.
 
 ## Ejecución
 
@@ -68,6 +68,8 @@ Todos requieren `Authorization: Bearer <token>`, salvo que se indique lo contrar
 | GET | `/api/v1/trips` | ADMINISTRATOR, OPERATIONS_MANAGER | Tablero de viajes, con filtro `status` de varios estados separados por coma (US16). |
 | GET | `/api/v1/trips/{id}` | ADMINISTRATOR, OPERATIONS_MANAGER, DRIVER | Detalle del viaje. Un conductor solo ve sus viajes (US17 y US19). |
 | GET | `/api/v1/trips/assigned-to-me` | DRIVER | Viajes asignados al conductor, ordenados por fecha de salida (US18). |
+| POST | `/api/v1/trips/{id}/locations` | DRIVER | Registra de 1 a 50 puntos de ubicación de un viaje `IN_ROUTE` de forma idempotente por `recordedAt` (S4-33). |
+| GET | `/api/v1/trips/locations/latest` | ADMINISTRATOR, OPERATIONS_MANAGER | Última ubicación registrada de cada viaje `IN_ROUTE` de la empresa (S4-33). |
 
 ## Endpoints internos
 

@@ -144,6 +144,13 @@ public class Trip extends AuditableAbstractAggregateRoot {
     requireStatus(TripStatus.SCHEDULED, "asignar");
   }
 
+  /** Solo un viaje en ruta admite el registro de puntos de ubicación. */
+  public void ensureInRouteForLocation() {
+    if (status != TripStatus.IN_ROUTE) {
+      throw new ConflictException("Solo se registra la ubicación de un viaje en ruta.");
+    }
+  }
+
   /** Asigna los recursos después de validar su disponibilidad en Trip y Fleet. */
   public void assign(
       UUID vehicleId,

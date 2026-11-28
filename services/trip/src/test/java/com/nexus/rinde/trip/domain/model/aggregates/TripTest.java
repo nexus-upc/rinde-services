@@ -125,6 +125,24 @@ class TripTest {
         .hasExactlyElementsOfTypes(TripAssigned.class, TripStarted.class, TripFinished.class);
   }
 
+  @Test
+  void locationRecordingRequiresInRouteStatus() {
+    Trip trip = scheduled(TODAY.plusDays(5));
+    trip.assign(VEHICLE, DRIVER, available(MaintenanceState.UP_TO_DATE), false, USER, NOW);
+
+    assertThatThrownBy(trip::ensureInRouteForLocation)
+        .isInstanceOf(ConflictException.class)
+        .hasMessage("Solo se registra la ubicación de un viaje en ruta.");
+
+    trip.start(USER, NOW);
+    trip.ensureInRouteForLocation();
+
+    trip.finish(USER, NOW);
+    assertThatThrownBy(trip::ensureInRouteForLocation)
+        .isInstanceOf(ConflictException.class)
+        .hasMessage("Solo se registra la ubicación de un viaje en ruta.");
+  }
+
   private static Trip scheduled(LocalDate departureDate) {
     return Trip.schedule(
         TENANT, "TRP-000001", route(), cargo(), departureDate, false, TODAY, NOW, USER);
